@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(test C CXX ASM)
+project(PointToPoint C CXX ASM)
 
 set(CNAKE_C_STANDARD 11)
 set(CNAKE_CXX_STANDARD 17)

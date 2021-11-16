@@ -56,10 +56,10 @@ uint8_t SX1276_READ(sx1276_t *sx1276, uint8_t addr)
     return response;
 }
 
-void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, int value)
+void SX1276_WRITE(sx1276_t *sx1276, const uint8_t addr, uint8_t value)
 {
-    gpio_out(sx1276->cs, 0);
-    spi_write_blocking(sx1276->spi, addr, 1);
-    spi_write_blocking(sx1276->spi, value, 1);
+    gpio_put(sx1276->cs, 0);
+    spi_write_blocking(sx1276->spi, &addr, 1);
+    spi_write_blocking(sx1276->spi, &value, 1);
     gpio_put(sx1276->cs, 1);
 }

@@ -12,19 +12,21 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
         printf("Wrong Version detected: %d", version);
         return 1;
     }
-
+    printf("Setting Lora Frequency \n");
     lora_setFrequency(lora, 868E6);
     // set base addresses
     SX1276_WRITE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
     SX1276_WRITE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
 
     // set LNA boost
-    SX1276_WRITE(sx1276, REG_LNA, readRegister(REG_LNA) | 0x03);
+    SX1276_WRITE(sx1276, REG_LNA, SX1276_READ(sx1276, REG_LNA) | 0x03);
 
     // set auto AGC
     SX1276_WRITE(sx1276, REG_MODEM_CONFIG_3, 0x04);
 
-    // setTxPower(LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
+    // set Tx Power
+    setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
+    printf("lora begin finished \n");
 }
 
 void setTxPower(sx1276_t *sx1276, int level, int outputPin)
@@ -75,6 +77,13 @@ void setTxPower(sx1276_t *sx1276, int level, int outputPin)
     }
 }
 
+/**
+ * @brief Set the transmittig frequency of the Lora module
+ * This needs an Initalized Lora struct and the choosen frequency
+ *
+ * @param lora
+ * @param frequency
+ */
 void lora_setFrequency(lora_t *lora, long frequency)
 {
     lora->_frequency = frequency;
@@ -85,6 +94,12 @@ void lora_setFrequency(lora_t *lora, long frequency)
     SX1276_WRITE(lora->sx1276, REG_FRF_MID, (uint8_t)(frf >> 8));
     SX1276_WRITE(lora->sx1276, REG_FRF_LSB, (uint8_t)(frf >> 0));
 }
+/**
+ * @brief Set max. current for Over Current Protection control
+ *
+ * @param sx1276
+ * @param mA
+ */
 
 void setOCP(sx1276_t *sx1276, uint8_t mA)
 {
