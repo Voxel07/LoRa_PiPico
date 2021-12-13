@@ -92,11 +92,30 @@
 #define REG_MODEM_CONFIG_2 0x1e
 #define REG_MODEM_CONFIG_3 0x26
 
+//isTransmitting
+#define REG_OP_MODE 0x01
+#define REG_IRQ_FLAGS 0x12
+
+// IRQ masks
+#define IRQ_TX_DONE_MASK 0x08
+#define IRQ_PAYLOAD_CRC_ERROR_MASK 0x20
+#define IRQ_RX_DONE_MASK 0x40
+
 #define PA_OUTPUT_RFO_PIN 0
 #define PA_OUTPUT_PA_BOOST_PIN 1
 
 // PA config
 #define PA_BOOST 0x80
+
+//modes
+#define MODE_TX 0x03
+#define MODE_LONG_RANGE_MODE 0x80
+#define MODE_SLEEP 0x00
+#define MODE_STDBY 0x01
+#define MODE_TX 0x03
+#define MODE_RX_CONTINUOUS 0x05
+#define MODE_RX_SINGLE 0x06
+
 typedef struct lora
 {
     sx1276_t *sx1276;
@@ -108,4 +127,17 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
 void setTxPower(sx1276_t *sx1276, int level, int outputPin);
 void lora_setFrequency(lora_t *lora, long frequency);
 void setOCP(sx1276_t *sx1276, uint8_t mA);
+
+// Message sending function group
+int lora_beginPacket(sx1276_t *sx1276, int implicitHeader);
+bool lora_isTransmitting(sx1276_t *sx1276);
+uint8_t lora_sendMessage(char *msg);
+uint8_t lora_reciveMessage();
+
+// Message reciving function group
+
+// Lora Modes
+void lora_goToIdel(sx1276_t *sx1276);
+void lora_goToSleep(sx1276_t *sx1276);
+
 #endif

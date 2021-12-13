@@ -3,17 +3,19 @@
 
 uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr)
 {
+    lora->sx1276 = sx1276;
+
     sx1276_init_spi(sx1276, spi, LORA_MOSI, LORA_MISO, LORA_SCK, LORA_CS, LORA_RESET, LORA_DIO0, LORA_DIO1);
 
     uint8_t version = SX1276_READ(sx1276, addr);
 
     if (version != 0x12)
     {
-        printf("Wrong Version detected: %d", version);
+        printf("Wrong Version detected: %d \n", version);
         return 1;
     }
     printf("Setting Lora Frequency \n");
-    lora_setFrequency(lora, 868E6);
+    lora_setFrequency(lora, 868E6); //defekt
     // set base addresses
     SX1276_WRITE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
     SX1276_WRITE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
@@ -27,6 +29,8 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     // set Tx Power
     setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
     printf("lora begin finished \n");
+
+    return 0;
 }
 
 void setTxPower(sx1276_t *sx1276, int level, int outputPin)
@@ -115,4 +119,56 @@ void setOCP(sx1276_t *sx1276, uint8_t mA)
     }
 
     SX1276_WRITE(sx1276, REG_OCP, 0x20 | (0x1F & ocpTrim));
+}
+
+int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
+{
+    //Check whether a message is currently being sent
+    if (lora_isTransmitting)
+    {
+        return 0;
+    }
+
+    // Set Lora in Idle state to start sending a new message
+    lora_goToIdel(sx1276);
+}
+
+bool lora_isTransmitting(sx1276_t *sx1276)
+{
+    // A Message is beeing sent at the moment
+    if ((SX1276_READ(sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
+    {
+        return true;
+    }
+
+    // No message is beeing sent
+    // C
+    if (SX1276_READ(sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)
+    {
+        // clear IRQ's
+        SX1276_WRITE(sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
+    }
+
+    return false;
+}
+/**
+ * @brief This function sends the pared message. 
+ * If the message is to log it will be spilt
+ * @param msg 
+ * @return true 
+ * @return false 
+ */
+uint8_t lora_sendMessage(char *msg)
+{
+
+    return 1;
+}
+
+void lora_goToIdel(sx1276_t *sx1276)
+{
+    SX1276_WRITE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
+}
+void lora_goToSleep(sx1276_t *sx1276)
+{
+    SX1276_WRITE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }

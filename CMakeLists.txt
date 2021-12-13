@@ -6,7 +6,7 @@ project(PointToPoint C CXX ASM)
 
 set(CNAKE_C_STANDARD 11)
 set(CNAKE_CXX_STANDARD 17)
-
+SET(GCC_COVERAGE_COMPILE_FLAGS "-O0")
 pico_sdk_init()
 
 add_executable(${PROJECT_NAME}

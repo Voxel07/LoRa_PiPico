@@ -1,8 +1,10 @@
 #include "sx1276.h"
 
+sx1276_t *test;
+
 void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs, uint8_t reset, uint8_t dio0, uint8_t dio1)
 {
-    printf("init SPI");
+    printf("init SPI\n");
     //init spi
     sx1276->spi = spi;
 
@@ -50,16 +52,57 @@ uint8_t SX1276_READ(sx1276_t *sx1276, uint8_t addr)
     uint8_t response = addr;
 
     gpio_put(sx1276->cs, 0);
-    spi_write_blocking(sx1276->spi, &response, 1);
+    if (spi_is_writable(sx1276->spi))
+    {
+        printf("Spi is writeable\n");
+        spi_write_blocking(sx1276->spi, &response, 1);
+    }
+    else
+    {
+        printf("not writeable\n");
+    }
+    // if (spi_is_readable(sx1276->spi))
+    // {
+    //     printf("Spi is readable\n");
     spi_read_blocking(sx1276->spi, 0, &response, 1);
+    // }
+    // else
+    // {
+    //     printf("not readable\n");
+    // }
     gpio_put(sx1276->cs, 1);
     return response;
 }
 
-void SX1276_WRITE(sx1276_t *sx1276, const uint8_t addr, uint8_t value)
+void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t value)
 {
+
+    uint8_t response = addr;
     gpio_put(sx1276->cs, 0);
-    spi_write_blocking(sx1276->spi, &addr, 1);
-    spi_write_blocking(sx1276->spi, &value, 1);
+    // spi_read_blocking(sx1276->spi, 0, &response, 1);
+    if (spi_is_writable(sx1276->spi))
+    {
+        printf("Spi is writeable\n");
+        spi_write_blocking(sx1276->spi, &response, 1);
+    }
+    else
+    {
+        printf("not writeable\n");
+    }
+
+    printf("Response of addr = %d", response);
+    response = value;
+    if (spi_is_writable(sx1276->spi))
+    {
+        printf("Spi is writeable\n");
+        spi_write_blocking(sx1276->spi, &response, 1);
+    }
+    else
+    {
+        printf("not writeable\n");
+    }
+    printf("Response of value = %d\n", response);
+
+    // spi_write_read_blocking(sx1276->spi, src, dst, 1);
     gpio_put(sx1276->cs, 1);
 }
