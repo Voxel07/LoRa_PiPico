@@ -49,40 +49,34 @@ void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t mi
 uint8_t SX1276_READ(sx1276_t *sx1276, uint8_t addr)
 {
 
-    uint8_t response = addr;
-
-    gpio_put(sx1276->cs, 0);
+    gpio_put(sx1276->cs, 0); //start communication
+    uint8_t read_data[1];
+    // Check if we can write data to the spi device
     if (spi_is_writable(sx1276->spi))
     {
-        printf("Spi is writeable\n");
-        spi_write_blocking(sx1276->spi, &response, 1);
+        spi_write_blocking(sx1276->spi, &addr, 1); //select the register
     }
     else
     {
         printf("not writeable\n");
     }
-    // if (spi_is_readable(sx1276->spi))
-    // {
-    //     printf("Spi is readable\n");
-    spi_read_blocking(sx1276->spi, 0, &response, 1);
-    // }
-    // else
-    // {
-    //     printf("not readable\n");
-    // }
-    gpio_put(sx1276->cs, 1);
-    return response;
+
+    spi_read_blocking(sx1276->spi, 0, read_data, 1); //read value of register
+
+    gpio_put(sx1276->cs, 1); //stop communication
+
+    return read_data[0];
 }
 
 void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t value)
 {
 
-    uint8_t response = addr;
+    uint8_t response = addr & WRITE_OPERATION;
     gpio_put(sx1276->cs, 0);
     // spi_read_blocking(sx1276->spi, 0, &response, 1);
     if (spi_is_writable(sx1276->spi))
     {
-        printf("Spi is writeable\n");
+        // printf("Spi is writeable\n");
         spi_write_blocking(sx1276->spi, &response, 1);
     }
     else
@@ -90,7 +84,7 @@ void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t value)
         printf("not writeable\n");
     }
 
-    printf("Response of addr = %d", response);
+    // printf("Response of addr = %d \n", response);
     response = value;
     if (spi_is_writable(sx1276->spi))
     {
@@ -101,7 +95,7 @@ void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t value)
     {
         printf("not writeable\n");
     }
-    printf("Response of value = %d\n", response);
+    // printf("Response of value = %d\n", response);
 
     // spi_write_read_blocking(sx1276->spi, src, dst, 1);
     gpio_put(sx1276->cs, 1);

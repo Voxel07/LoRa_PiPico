@@ -79,7 +79,7 @@
 //TX
 #define REG_PA_CONFIG 0x09
 #define REG_PA_DAC 0x4d
-
+#define MAX_PKT_LENGTH 255
 #define REG_FIFO_TX_BASE_ADDR 0x0e
 #define REG_FIFO_RX_BASE_ADDR 0x0f
 
@@ -112,9 +112,14 @@
 #define MODE_LONG_RANGE_MODE 0x80
 #define MODE_SLEEP 0x00
 #define MODE_STDBY 0x01
-#define MODE_TX 0x03
 #define MODE_RX_CONTINUOUS 0x05
 #define MODE_RX_SINGLE 0x06
+
+//Lora info
+#define REG_PAYLOAD_LENGTH 0x22
+
+//FIFO
+#define REG_FIFO 0x00 //RegFifoRxBaseAddr
 
 typedef struct lora
 {
@@ -131,7 +136,7 @@ void setOCP(sx1276_t *sx1276, uint8_t mA);
 // Message sending function group
 int lora_beginPacket(sx1276_t *sx1276, int implicitHeader);
 bool lora_isTransmitting(sx1276_t *sx1276);
-uint8_t lora_sendMessage(char *msg);
+size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size);
 uint8_t lora_reciveMessage();
 
 // Message reciving function group

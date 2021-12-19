@@ -7,34 +7,35 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
 
     sx1276_init_spi(sx1276, spi, LORA_MOSI, LORA_MISO, LORA_SCK, LORA_CS, LORA_RESET, LORA_DIO0, LORA_DIO1);
 
-    uint8_t version = SX1276_READ(sx1276, addr);
+    // uint8_t version = SX1276_READ(sx1276, addr);
 
-    if (version != 0x12)
-    {
-        printf("Wrong Version detected: %d \n", version);
-        return 1;
-    }
-    printf("Setting Lora Frequency \n");
-    lora_setFrequency(lora, 868E6); //defekt
-    // set base addresses
-    SX1276_WRITE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
-    SX1276_WRITE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
+    // if (version != 0x12)
+    // {
+    //     printf("Wrong Version detected: %d \n", version);
+    //     return 1;
+    // }
+    // printf("Setting Lora Frequency \n");
+    // lora_setFrequency(lora, 868E6); //defekt
+    // // set base addresses
+    // SX1276_WRITE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
+    // SX1276_WRITE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
 
-    // set LNA boost
-    SX1276_WRITE(sx1276, REG_LNA, SX1276_READ(sx1276, REG_LNA) | 0x03);
+    // // set LNA boost
+    // SX1276_WRITE(sx1276, REG_LNA, SX1276_READ(sx1276, REG_LNA) | 0x03);
 
-    // set auto AGC
-    SX1276_WRITE(sx1276, REG_MODEM_CONFIG_3, 0x04);
+    // // set auto AGC
+    // SX1276_WRITE(sx1276, REG_MODEM_CONFIG_3, 0x04);
 
-    // set Tx Power
-    setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
-    printf("lora begin finished \n");
+    // // set Tx Power
+    // setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
+    // printf("lora begin finished \n");
 
     return 0;
 }
 
 void setTxPower(sx1276_t *sx1276, int level, int outputPin)
 {
+    printf("setTxPower");
     if (PA_OUTPUT_RFO_PIN == outputPin)
     {
         // RFO
@@ -90,6 +91,7 @@ void setTxPower(sx1276_t *sx1276, int level, int outputPin)
  */
 void lora_setFrequency(lora_t *lora, long frequency)
 {
+    printf("lora_setFrequency");
     lora->_frequency = frequency;
 
     uint64_t frf = ((uint64_t)frequency << 19) / 32000000;
@@ -107,6 +109,8 @@ void lora_setFrequency(lora_t *lora, long frequency)
 
 void setOCP(sx1276_t *sx1276, uint8_t mA)
 {
+    printf("setOCP");
+
     uint8_t ocpTrim = 27;
 
     if (mA <= 120)
@@ -123,6 +127,8 @@ void setOCP(sx1276_t *sx1276, uint8_t mA)
 
 int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
 {
+    printf("lora_beginPacket");
+
     //Check whether a message is currently being sent
     if (lora_isTransmitting)
     {
@@ -135,6 +141,8 @@ int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
 
 bool lora_isTransmitting(sx1276_t *sx1276)
 {
+    printf("lora_isTransmitting");
+
     // A Message is beeing sent at the moment
     if ((SX1276_READ(sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
     {
@@ -158,17 +166,42 @@ bool lora_isTransmitting(sx1276_t *sx1276)
  * @return true 
  * @return false 
  */
-uint8_t lora_sendMessage(char *msg)
+size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
+    printf("lora_sendMessage");
 
-    return 1;
+    int currentLength = SX1276_READ(lora->sx1276, REG_PAYLOAD_LENGTH);
+
+    printf("Currents fifo size: %d \n", currentLength);
+
+    // check if the new msg fits into the fifo register
+    if ((currentLength + size) > MAX_PKT_LENGTH)
+    {
+        size = MAX_PKT_LENGTH - currentLength;
+    }
+
+    // write data
+    for (size_t i = 0; i < size; i++)
+    {
+        printf("Writing dada %d\n", i);
+        SX1276_WRITE(lora->sx1276, REG_FIFO, msg[i]);
+    }
+
+    // update length
+    SX1276_WRITE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
+
+    return size;
 }
 
 void lora_goToIdel(sx1276_t *sx1276)
 {
+    printf("lora_goToIdel");
+
     SX1276_WRITE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
 }
 void lora_goToSleep(sx1276_t *sx1276)
 {
+    printf("lora_goToSleep");
+
     SX1276_WRITE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }

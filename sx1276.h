@@ -3,6 +3,9 @@
 
 #define REG_LR_VERSION 0x42
 
+#define WRITE_OPERATION 0x7F
+#define READ_OPERATION 0xFF
+
 #include "hardware/spi.h"
 #include "hardware/gpio.h"
 #include <stdio.h>
