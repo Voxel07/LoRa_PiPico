@@ -68,35 +68,50 @@ uint8_t SX1276_READ(sx1276_t *sx1276, uint8_t addr)
     return read_data[0];
 }
 
-void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t value)
+void SX1276_WRITE_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr, uint8_t data)
 {
+    uint8_t txData[2];
 
-    uint8_t response = addr & WRITE_OPERATION;
+    txData[0] = addr | WRITE_OPERATION; //ensure that Bit 7 is 1 aka write operation
+    txData[1] = data;
+
     gpio_put(sx1276->cs, 0);
-    // spi_read_blocking(sx1276->spi, 0, &response, 1);
     if (spi_is_writable(sx1276->spi))
     {
-        // printf("Spi is writeable\n");
-        spi_write_blocking(sx1276->spi, &response, 1);
+        spi_write_blocking(sx1276->spi, txData, 2);
     }
     else
     {
         printf("not writeable\n");
     }
 
-    // printf("Response of addr = %d \n", response);
-    response = value;
-    if (spi_is_writable(sx1276->spi))
-    {
-        printf("Spi is writeable\n");
-        spi_write_blocking(sx1276->spi, &response, 1);
-    }
-    else
-    {
-        printf("not writeable\n");
-    }
-    // printf("Response of value = %d\n", response);
-
-    // spi_write_read_blocking(sx1276->spi, src, dst, 1);
     gpio_put(sx1276->cs, 1);
+}
+
+void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t *data)
+{
+    uint8_t data_size = sizeof(data) / sizeof(uint8_t);
+
+    uint8_t txData[data_size + 1];
+    txData[0] = addr | WRITE_OPERATION; //ensure that Bit 7 is 1 aka write operation
+    memcpy(&txData[1], data, data_size);
+
+    printf("Length of data: %d \n", data_size);
+    printf("Length of txData: %d \n", sizeof(txData) / sizeof(uint8_t));
+    for (size_t i = 0; i < sizeof(txData) / sizeof(uint8_t); i++)
+    {
+        printf("txData[%d]:%x\n", i, txData[i]);
+    }
+
+    // gpio_put(sx1276->cs, 0);
+    // if (spi_is_writable(sx1276->spi))
+    // {
+    //     spi_write_blocking(sx1276->spi, txData, data_size);
+    // }
+    // else
+    // {
+    //     printf("not writeable\n");
+    // }
+
+    // gpio_put(sx1276->cs, 1);
 }
