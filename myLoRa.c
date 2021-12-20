@@ -7,28 +7,30 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
 
     sx1276_init_spi(sx1276, spi, LORA_MOSI, LORA_MISO, LORA_SCK, LORA_CS, LORA_RESET, LORA_DIO0, LORA_DIO1);
 
-    // uint8_t version = SX1276_READ(sx1276, addr);
+    uint8_t version = SX1276_READ_SINGLE_BYTE(sx1276, addr);
 
-    // if (version != 0x12)
-    // {
-    //     printf("Wrong Version detected: %d \n", version);
-    //     return 1;
-    // }
-    // printf("Setting Lora Frequency \n");
-    // lora_setFrequency(lora, 868E6); //defekt
-    // // set base addresses
-    // SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
-    // SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
+    if (version != 0x12)
+    {
+        printf("Wrong Version detected: %d \n", version);
+        return 1;
+    }
 
-    // // set LNA boost
-    // SX1276_WRITE_SINGLE_BYTE(sx1276, REG_LNA, SX1276_READ(sx1276, REG_LNA) | 0x03);
+    printf("Setting Lora Frequency \n");
+    lora_setFrequency(lora, 868E6);
 
-    // // set auto AGC
-    // SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
+    // set base addresses
+    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
+    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
 
-    // // set Tx Power
-    // setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
-    // printf("lora begin finished \n");
+    // set LNA boost
+    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_LNA, SX1276_READ_SINGLE_BYTE(sx1276, REG_LNA) | 0x03);
+
+    // set auto AGC
+    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
+
+    // set Tx Power
+    setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
+    printf("lora begin finished \n");
 
     return 0;
 }
@@ -144,14 +146,14 @@ bool lora_isTransmitting(sx1276_t *sx1276)
     printf("lora_isTransmitting");
 
     // A Message is beeing sent at the moment
-    if ((SX1276_READ(sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
+    if ((SX1276_READ_SINGLE_BYTE(sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
     {
         return true;
     }
 
     // No message is beeing sent
     // C
-    if (SX1276_READ(sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)
+    if (SX1276_READ_SINGLE_BYTE(sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)
     {
         // clear IRQ's
         SX1276_WRITE_SINGLE_BYTE(sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
@@ -170,7 +172,7 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
     printf("lora_sendMessage");
 
-    int currentLength = SX1276_READ(lora->sx1276, REG_PAYLOAD_LENGTH);
+    int currentLength = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH);
 
     printf("Currents fifo size: %d \n", currentLength);
 

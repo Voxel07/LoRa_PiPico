@@ -46,26 +46,26 @@ void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t mi
     gpio_pull_up(sx1276->dio1);
 }
 
-uint8_t SX1276_READ(sx1276_t *sx1276, uint8_t addr)
+uint8_t SX1276_READ_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr)
 {
 
     gpio_put(sx1276->cs, 0); //start communication
-    uint8_t read_data[1];
+    uint8_t rxData = addr & WRITE_OPERATION;
     // Check if we can write data to the spi device
     if (spi_is_writable(sx1276->spi))
     {
-        spi_write_blocking(sx1276->spi, &addr, 1); //select the register
+        spi_write_blocking(sx1276->spi, &rxData, 1); //select the register
     }
     else
     {
         printf("not writeable\n");
     }
 
-    spi_read_blocking(sx1276->spi, 0, read_data, 1); //read value of register
+    spi_read_blocking(sx1276->spi, 0, &rxData, 1); //read value of register
 
     gpio_put(sx1276->cs, 1); //stop communication
 
-    return read_data[0];
+    return rxData;
 }
 
 void SX1276_WRITE_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr, uint8_t data)
@@ -88,30 +88,21 @@ void SX1276_WRITE_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr, uint8_t data)
     gpio_put(sx1276->cs, 1);
 }
 
-void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t *data)
+void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t *data, size_t size)
 {
-    uint8_t data_size = sizeof(data) / sizeof(uint8_t);
-
-    uint8_t txData[data_size + 1];
+    uint8_t txData[size + 1];
     txData[0] = addr | WRITE_OPERATION; //ensure that Bit 7 is 1 aka write operation
-    memcpy(&txData[1], data, data_size);
+    memcpy(&txData[1], data, size);
 
-    printf("Length of data: %d \n", data_size);
-    printf("Length of txData: %d \n", sizeof(txData) / sizeof(uint8_t));
-    for (size_t i = 0; i < sizeof(txData) / sizeof(uint8_t); i++)
+    gpio_put(sx1276->cs, 0);
+    if (spi_is_writable(sx1276->spi))
     {
-        printf("txData[%d]:%x\n", i, txData[i]);
+        spi_write_blocking(sx1276->spi, txData, size);
+    }
+    else
+    {
+        printf("not writeable\n");
     }
 
-    // gpio_put(sx1276->cs, 0);
-    // if (spi_is_writable(sx1276->spi))
-    // {
-    //     spi_write_blocking(sx1276->spi, txData, data_size);
-    // }
-    // else
-    // {
-    //     printf("not writeable\n");
-    // }
-
-    // gpio_put(sx1276->cs, 1);
+    gpio_put(sx1276->cs, 1);
 }

@@ -31,8 +31,10 @@ int main()
     uint8_t data[2];
     data[0] = 0x01;
     data[1] = 0x02;
-
-    SX1276_WRITE(&sx1276, addr, data);
+    printf("data: %d\n", sizeof(data));
+    printf("data[x]: %d\n", sizeof(*data));
+    printf("size: %d\n", sizeof(data) / sizeof(*data));
+    SX1276_WRITE(&sx1276, addr, data, sizeof(data) / sizeof(*data));
 
     const char *msg = "HALLO";
 
