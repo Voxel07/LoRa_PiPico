@@ -19,16 +19,17 @@ typedef struct sx1276
 {
     spi_inst_t *spi;
     //SPI pins
-    uint8_t mosi;
-    uint8_t miso;
-    uint8_t sck;
-    uint8_t cs;
+    uint8_t _mosi;
+    uint8_t _miso;
+    uint8_t _sck;
+    uint8_t _cs;
     //Chip Pins
-    uint8_t reset;
-    uint8_t dio0;
-    uint8_t dio1;
+    uint8_t _reset;
+    uint8_t _dio0;
+    uint8_t _dio1;
 
 } sx1276_t;
+
 void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs, uint8_t reset, uint8_t dio0, uint8_t dio1);
 
 uint8_t SX1276_READ_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr);

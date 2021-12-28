@@ -1,6 +1,15 @@
 #include "myLoRa.h"
 #include "sx1276.h"
 
+/**
+ * @brief
+ *
+ * @param lora
+ * @param sx1276
+ * @param spi
+ * @param addr
+ * @return uint8_t
+ */
 uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr)
 {
     lora->sx1276 = sx1276;
@@ -35,6 +44,13 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     return 0;
 }
 
+/**
+ * @brief Set the Tx Power object
+ *
+ * @param sx1276
+ * @param level
+ * @param outputPin
+ */
 void setTxPower(sx1276_t *sx1276, int level, int outputPin)
 {
     printf("setTxPower");
@@ -102,13 +118,13 @@ void lora_setFrequency(lora_t *lora, long frequency)
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FRF_MID, (uint8_t)(frf >> 8));
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FRF_LSB, (uint8_t)(frf >> 0));
 }
+
 /**
  * @brief Set max. current for Over Current Protection control
  *
  * @param sx1276
  * @param mA
  */
-
 void setOCP(sx1276_t *sx1276, uint8_t mA)
 {
     printf("setOCP");
@@ -127,12 +143,18 @@ void setOCP(sx1276_t *sx1276, uint8_t mA)
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OCP, 0x20 | (0x1F & ocpTrim));
 }
 
+/**
+ * @brief This function should be called bevor a new Message can be send. To ensure a clean state.
+ *
+ * @param implicitHeader
+ * @return int
+ */
 int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
 {
     printf("lora_beginPacket");
 
     //Check whether a message is currently being sent
-    if (lora_isTransmitting)
+    if (lora_isTransmitting(sx1276))
     {
         return 0;
     }
@@ -141,6 +163,12 @@ int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
     lora_goToIdel(sx1276);
 }
 
+/**
+ * @brief Check if the lora module is currently transmitting data to prevent data loss.
+ *
+ * @return true
+ * @return false
+ */
 bool lora_isTransmitting(sx1276_t *sx1276)
 {
     printf("lora_isTransmitting");
@@ -161,15 +189,20 @@ bool lora_isTransmitting(sx1276_t *sx1276)
 
     return false;
 }
+
 /**
- * @brief This function sends the pared message. 
- * If the message is to log it will be spilt
- * @param msg 
- * @return true 
- * @return false 
+ * @brief This function sends the pared message.
+ * If the message is to long it will be spilt and send in multible bursts
+ *
+ * @param msg
+ * @param size
+ * @return size_t
  */
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
+
+    //seralize data bevor sending it
+
     printf("lora_sendMessage");
 
     int currentLength = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH);
