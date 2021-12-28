@@ -4,9 +4,9 @@
  * @brief This is the TX Example
  * @version 0.1
  * @date 2021-12-18
- * 
+ *
  * @copyright Copyright (c) 2021
- * 
+ *
  */
 #include <stdio.h>
 #include "pico/stdlib.h"
@@ -27,18 +27,11 @@ int main()
         printf("Well shit\n");
     }
 
-    uint8_t addr = 0x00;
-    uint8_t data[2];
-    data[0] = 0x01;
-    data[1] = 0x02;
-    printf("data: %d\n", sizeof(data));
-    printf("data[x]: %d\n", sizeof(*data));
-    printf("size: %d\n", sizeof(data) / sizeof(*data));
-    SX1276_WRITE(&sx1276, addr, data, sizeof(data) / sizeof(*data));
-
-    const char *msg = "HALLO";
-
-    lora_sendMessage(&lora, msg, sizeof(msg));
+    for (size_t i = 0; i < 100; i++)
+    {
+        lora_sendMessage(&lora, i, sizeof(i));
+        sleep_ms(100);
+    }
 
     return 0;
 }

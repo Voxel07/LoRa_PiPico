@@ -103,7 +103,7 @@
 
 #define PA_OUTPUT_RFO_PIN 0
 #define PA_OUTPUT_PA_BOOST_PIN 1
-
+#define REG_DIO_MAPPING_1 0x40
 // PA config
 #define PA_BOOST 0x80
 
@@ -115,8 +115,14 @@
 #define MODE_RX_CONTINUOUS 0x05
 #define MODE_RX_SINGLE 0x06
 
+// IRQ masks
+#define IRQ_TX_DONE_MASK 0x08
+#define IRQ_PAYLOAD_CRC_ERROR_MASK 0x20
+#define IRQ_RX_DONE_MASK 0x40
+
 //Lora info
 #define REG_PAYLOAD_LENGTH 0x22
+#define REG_FIFO_ADDR_PTR 0x0d
 
 //FIFO
 #define REG_FIFO 0x00 //RegFifoRxBaseAddr
@@ -125,6 +131,9 @@ typedef struct lora
 {
     sx1276_t *sx1276;
     long _frequency;
+    bool _onTxDone;
+    bool _isTransmitting; //usefull?
+    int _implicitHeaderMode;
 
 } lora_t;
 
@@ -134,12 +143,16 @@ void lora_setFrequency(lora_t *lora, long frequency);
 void setOCP(sx1276_t *sx1276, uint8_t mA);
 
 // Message sending function group
-int lora_beginPacket(sx1276_t *sx1276, int implicitHeader);
+int lora_beginPacket(lora_t *lora, int implicitHeader);
+int endPacket(lora_t *lora, bool async);
 bool lora_isTransmitting(sx1276_t *sx1276);
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size);
-uint8_t lora_reciveMessage();
+
+void explicitHeaderMode();
+void implicitHeaderMode();
 
 // Message reciving function group
+uint8_t lora_reciveMessage();
 
 // Lora Modes
 void lora_goToIdel(sx1276_t *sx1276);

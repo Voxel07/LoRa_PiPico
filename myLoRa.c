@@ -53,7 +53,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
  */
 void setTxPower(sx1276_t *sx1276, int level, int outputPin)
 {
-    printf("setTxPower");
+    printf("setTxPower \n");
     if (PA_OUTPUT_RFO_PIN == outputPin)
     {
         // RFO
@@ -109,7 +109,7 @@ void setTxPower(sx1276_t *sx1276, int level, int outputPin)
  */
 void lora_setFrequency(lora_t *lora, long frequency)
 {
-    printf("lora_setFrequency");
+    printf("lora_setFrequency \n");
     lora->_frequency = frequency;
 
     uint64_t frf = ((uint64_t)frequency << 19) / 32000000;
@@ -127,7 +127,7 @@ void lora_setFrequency(lora_t *lora, long frequency)
  */
 void setOCP(sx1276_t *sx1276, uint8_t mA)
 {
-    printf("setOCP");
+    printf("setOCP \n");
 
     uint8_t ocpTrim = 27;
 
@@ -143,24 +143,18 @@ void setOCP(sx1276_t *sx1276, uint8_t mA)
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OCP, 0x20 | (0x1F & ocpTrim));
 }
 
-/**
- * @brief This function should be called bevor a new Message can be send. To ensure a clean state.
- *
- * @param implicitHeader
- * @return int
- */
-int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
+void explicitHeaderMode(lora_t *lora)
 {
-    printf("lora_beginPacket");
+    lora->_implicitHeaderMode = 0;
 
-    //Check whether a message is currently being sent
-    if (lora_isTransmitting(sx1276))
-    {
-        return 0;
-    }
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1, SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1) & 0xfe);
+}
 
-    // Set Lora in Idle state to start sending a new message
-    lora_goToIdel(sx1276);
+void implicitHeaderMode(lora_t *lora)
+{
+    lora->_implicitHeaderMode = 1;
+
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1, SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1) | 0x01);
 }
 
 /**
@@ -171,7 +165,7 @@ int lora_beginPacket(sx1276_t *sx1276, int implicitHeader)
  */
 bool lora_isTransmitting(sx1276_t *sx1276)
 {
-    printf("lora_isTransmitting");
+    printf("lora_isTransmitting \n");
 
     // A Message is beeing sent at the moment
     if ((SX1276_READ_SINGLE_BYTE(sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
@@ -191,6 +185,65 @@ bool lora_isTransmitting(sx1276_t *sx1276)
 }
 
 /**
+ * @brief This function should be called bevor a new Message can be send. To ensure a clean state.
+ *
+ * @param implicitHeader
+ * @return int
+ */
+int lora_beginPacket(lora_t *lora, int implicitHeader)
+{
+    printf("lora_beginPacket \n");
+
+    //Check whether a message is currently being sent
+    if (lora_isTransmitting(lora->sx1276))
+    {
+        return 0;
+    }
+
+    // Set Lora in Idle state to start sending a new message
+    lora_goToIdel(lora->sx1276);
+
+    if (implicitHeader)
+    {
+        implicitHeaderMode(lora);
+    }
+    else
+    {
+        explicitHeaderMode(lora);
+    }
+
+    // reset FIFO address and paload length
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, 0);
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, 0);
+
+    return 1;
+}
+
+int lora_endPacket(lora_t *lora, bool async)
+{
+
+    if ((async) && (lora->_onTxDone))
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_DIO_MAPPING_1, 0x40); // DIO0 => TXDONE
+
+    // put in TX mode
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
+
+    if (!async)
+    {
+        // wait for TX done
+        while ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == 0)
+        {
+            //https://github.com/arduino-libraries/Scheduler/blob/master/src/Scheduler.cpp
+            // yield();
+        }
+        // clear IRQ's
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
+    }
+
+    return 1;
+}
+
+/**
  * @brief This function sends the pared message.
  * If the message is to long it will be spilt and send in multible bursts
  *
@@ -200,10 +253,10 @@ bool lora_isTransmitting(sx1276_t *sx1276)
  */
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
-
+    lora_beginPacket(lora, 1);
     //seralize data bevor sending it
 
-    printf("lora_sendMessage");
+    printf("lora_sendMessage\n");
 
     int currentLength = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH);
 
@@ -218,25 +271,26 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
     // write data
     for (size_t i = 0; i < size; i++)
     {
-        printf("Writing dada %d\n", i);
+        printf("Writing data %d\n", i);
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO, msg[i]);
     }
 
     // update length
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
 
+    lora_endPacket(lora, true);
     return size;
 }
 
 void lora_goToIdel(sx1276_t *sx1276)
 {
-    printf("lora_goToIdel");
+    printf("lora_goToIdle \n");
 
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
 }
 void lora_goToSleep(sx1276_t *sx1276)
 {
-    printf("lora_goToSleep");
+    printf("lora_goToSleep \n");
 
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
 }
