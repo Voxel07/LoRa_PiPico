@@ -38,7 +38,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
 
     // set Tx Power
-    setTxPower(sx1276, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
+    setTxPower(lora, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
     printf("lora begin finished \n");
 
     return 0;
@@ -51,7 +51,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
  * @param level
  * @param outputPin
  */
-void setTxPower(sx1276_t *sx1276, int level, int outputPin)
+void setTxPower(lora_t *lora, int level, int outputPin)
 {
     printf("setTxPower \n");
     if (PA_OUTPUT_RFO_PIN == outputPin)
@@ -66,7 +66,7 @@ void setTxPower(sx1276_t *sx1276, int level, int outputPin)
             level = 14;
         }
 
-        SX1276_WRITE_SINGLE_BYTE(sx1276, REG_PA_CONFIG, 0x70 | level);
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_CONFIG, 0x70 | level);
     }
     else
     {
@@ -82,8 +82,8 @@ void setTxPower(sx1276_t *sx1276, int level, int outputPin)
             level -= 3;
 
             // High Power +20 dBm Operation (Semtech SX1276/77/78/79 5.4.3.)
-            SX1276_WRITE_SINGLE_BYTE(sx1276, REG_PA_DAC, 0x87);
-            setOCP(sx1276, 140);
+            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_DAC, 0x87);
+            setOCP(lora, 140);
         }
         else
         {
@@ -92,11 +92,11 @@ void setTxPower(sx1276_t *sx1276, int level, int outputPin)
                 level = 2;
             }
             //Default value PA_HF/LF or +17dBm
-            SX1276_WRITE_SINGLE_BYTE(sx1276, REG_PA_DAC, 0x84);
-            setOCP(sx1276, 100);
+            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_DAC, 0x84);
+            setOCP(lora, 100);
         }
 
-        SX1276_WRITE_SINGLE_BYTE(sx1276, REG_PA_CONFIG, PA_BOOST | (level - 2));
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_CONFIG, PA_BOOST | (level - 2));
     }
 }
 
@@ -125,7 +125,7 @@ void lora_setFrequency(lora_t *lora, long frequency)
  * @param sx1276
  * @param mA
  */
-void setOCP(sx1276_t *sx1276, uint8_t mA)
+void setOCP(lora_t *lora, uint8_t mA)
 {
     printf("setOCP \n");
 
@@ -140,7 +140,7 @@ void setOCP(sx1276_t *sx1276, uint8_t mA)
         ocpTrim = (mA + 30) / 10;
     }
 
-    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OCP, 0x20 | (0x1F & ocpTrim));
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OCP, 0x20 | (0x1F & ocpTrim));
 }
 
 void explicitHeaderMode(lora_t *lora)
@@ -163,22 +163,22 @@ void implicitHeaderMode(lora_t *lora)
  * @return true
  * @return false
  */
-bool lora_isTransmitting(sx1276_t *sx1276)
+bool lora_isTransmitting(lora_t *lora)
 {
     printf("lora_isTransmitting \n");
 
     // A Message is beeing sent at the moment
-    if ((SX1276_READ_SINGLE_BYTE(sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
+    if ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE) & MODE_TX) == MODE_TX)
     {
         return true;
     }
 
     // No message is beeing sent
     // C
-    if (SX1276_READ_SINGLE_BYTE(sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)
+    if (SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)
     {
         // clear IRQ's
-        SX1276_WRITE_SINGLE_BYTE(sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
     }
 
     return false;
@@ -195,13 +195,13 @@ int lora_beginPacket(lora_t *lora, int implicitHeader)
     printf("lora_beginPacket \n");
 
     //Check whether a message is currently being sent
-    if (lora_isTransmitting(lora->sx1276))
+    if (lora_isTransmitting(lora))
     {
         return 0;
     }
 
     // Set Lora in Idle state to start sending a new message
-    lora_goToIdel(lora->sx1276);
+    lora_goToIdel(lora);
 
     if (implicitHeader)
     {
@@ -209,7 +209,7 @@ int lora_beginPacket(lora_t *lora, int implicitHeader)
     }
     else
     {
-        explicitHeaderMode(lora);
+        explicitHeaderMode(lora); //default
     }
 
     // reset FIFO address and paload length
@@ -253,7 +253,7 @@ int lora_endPacket(lora_t *lora, bool async)
  */
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
-    lora_beginPacket(lora, 1);
+    lora_beginPacket(lora, 0);
     //seralize data bevor sending it
 
     printf("lora_sendMessage\n");
@@ -266,31 +266,67 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
     if ((currentLength + size) > MAX_PKT_LENGTH)
     {
         size = MAX_PKT_LENGTH - currentLength;
-    }
+        //singe tx is enought
+        // write data
+        for (size_t i = 0; i < size; i++)
+        {
+            printf("Writing data %d\n", i);
+            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO, msg[i]);
+        }
 
-    // write data
-    for (size_t i = 0; i < size; i++)
+        // update length
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
+
+        lora_endPacket(lora, true);
+
+        lora_tx_single(lora);
+    }
+    else
     {
-        printf("Writing data %d\n", i);
-        SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO, msg[i]);
+        //The Message needs to be send in single packages
     }
 
-    // update length
-    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
-
-    lora_endPacket(lora, true);
     return size;
 }
 
-void lora_goToIdel(sx1276_t *sx1276)
+size_t lora_reciveMessage(lora_t *lora, const char *msg)
+{
+    lora_rx_continuous(lora);
+    printf("REG_PAYLOAD_LENGTH %d \n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH));
+    printf("REGRXPACKETCNTLSB %d \n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REGRXPACKETCNTLSB));
+    printf("REGRXPACKETCNTMSB %d \n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REGRXPACKETCNTMSB));
+    return 8u;
+}
+
+//Lora Modes
+void lora_goToIdel(lora_t *lora)
 {
     printf("lora_goToIdle \n");
 
-    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
 }
-void lora_goToSleep(sx1276_t *sx1276)
+
+void lora_goToSleep(lora_t *lora)
 {
     printf("lora_goToSleep \n");
 
-    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_SLEEP);
+}
+
+void lora_tx_single(lora_t *lora)
+{
+    printf("Lora_tx_single");
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
+}
+
+void lora_rx_single(lora_t *lora)
+{
+    printf("Lora_tx_single");
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_SINGLE);
+}
+
+void lora_rx_continuous(lora_t *lora)
+{
+    printf("Lora_tx_single");
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
 }

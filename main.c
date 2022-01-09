@@ -27,10 +27,9 @@ int main()
         printf("Well shit\n");
     }
 
-    for (size_t i = 0; i < 100; i++)
+    while (true)
     {
-        lora_sendMessage(&lora, i, sizeof(i));
-        sleep_ms(100);
+        lora_rx_continuous(&lora);
     }
 
     return 0;

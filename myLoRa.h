@@ -123,13 +123,25 @@
 //Lora info
 #define REG_PAYLOAD_LENGTH 0x22
 #define REG_FIFO_ADDR_PTR 0x0d
+#define REGRXPACKETCNTLSB 0x17
+#define REGRXPACKETCNTMSB 0x16
 
 //FIFO
 #define REG_FIFO 0x00 //RegFifoRxBaseAddr
 
+typedef struct loraconfig
+{
+    bool explicedHeadermode;
+    bool enableCRCGeneration;
+    uint8_t spreadingfactor;
+    uint8_t bandwith;
+
+} loraconfig_t;
+
 typedef struct lora
 {
     sx1276_t *sx1276;
+    loraconfig_t config;
     long _frequency;
     bool _onTxDone;
     bool _isTransmitting; //usefull?
@@ -138,24 +150,27 @@ typedef struct lora
 } lora_t;
 
 uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t address);
-void setTxPower(sx1276_t *sx1276, int level, int outputPin);
+void setTxPower(lora_t *lora, int level, int outputPin);
 void lora_setFrequency(lora_t *lora, long frequency);
-void setOCP(sx1276_t *sx1276, uint8_t mA);
+void setOCP(lora_t *lora, uint8_t mA);
 
 // Message sending function group
 int lora_beginPacket(lora_t *lora, int implicitHeader);
 int endPacket(lora_t *lora, bool async);
-bool lora_isTransmitting(sx1276_t *sx1276);
+bool lora_isTransmitting(lora_t *lora);
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size);
 
 void explicitHeaderMode();
 void implicitHeaderMode();
 
 // Message reciving function group
-uint8_t lora_reciveMessage();
+size_t lora_reciveMessage(lora_t *lora, const char *msg);
 
 // Lora Modes
-void lora_goToIdel(sx1276_t *sx1276);
-void lora_goToSleep(sx1276_t *sx1276);
+void lora_goToIdel(lora_t *lora);
+void lora_goToSleep(lora_t *lora);
+void lora_tx_single(lora_t *lora);
+void lora_rx_single(lora_t *lora);
+void lora_rx_continuous(lora_t *lora);
 
 #endif
