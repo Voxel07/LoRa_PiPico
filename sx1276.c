@@ -45,10 +45,10 @@ void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t mi
 }
 
 /**
- * @brief 
- * 
- * @param addr 
- * @return uint8_t 
+ * @brief
+ *
+ * @param addr
+ * @return uint8_t
  */
 uint8_t SX1276_READ_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr)
 {
@@ -73,10 +73,10 @@ uint8_t SX1276_READ_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr)
 }
 
 /**
- * @brief 
- * 
- * @param addr 
- * @param data 
+ * @brief
+ *
+ * @param addr
+ * @param data
  */
 void SX1276_WRITE_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr, uint8_t data)
 {
@@ -99,11 +99,11 @@ void SX1276_WRITE_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr, uint8_t data)
 }
 
 /**
- * @brief 
- * 
- * @param addr 
- * @param data 
- * @param size 
+ * @brief
+ *
+ * @param addr
+ * @param data
+ * @param size
  */
 void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t *data, size_t size)
 {
@@ -122,4 +122,8 @@ void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t *data, size_t size)
     }
 
     gpio_put(sx1276->_cs, 1);
+}
+uint8_t SX1276_GET_GPIO_VALUE(sx1276_t *sx1276, uint8_t pin)
+{
+    return gpio_get(pin);
 }

@@ -306,6 +306,7 @@ void lora_goToIdel(lora_t *lora)
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
 }
 
+//Will wipe FIFO Buffer
 void lora_goToSleep(lora_t *lora)
 {
     printf("lora_goToSleep \n");
@@ -321,12 +322,23 @@ void lora_tx_single(lora_t *lora)
 
 void lora_rx_single(lora_t *lora)
 {
-    printf("Lora_tx_single");
+    printf("Lora_rx_single");
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_SINGLE);
 }
 
 void lora_rx_continuous(lora_t *lora)
 {
-    printf("Lora_tx_single");
+    printf("Lora_rx_continuous");
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
+
+    while (true)
+    {
+        if (SX1276_GET_GPIO_VALUE(lora->sx1276, LORA_DIO0))
+        {
+            gpio_put(PICO_DEFAULT_LED_PIN, 1);
+            printf("GPIO war 1");
+            break;
+        }
+        sleep_ms(1000);
+    }
 }

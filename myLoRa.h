@@ -61,8 +61,8 @@
 #define LORA_SCK 18
 #define LORA_CS 8
 #define LORA_RESET 9
-#define LORA_DIO0 7
-#define LORA_DIO1 10
+#define LORA_DIO0 7  //RxDone, TxDone, CadDone Interrupts
+#define LORA_DIO1 10 //RxTimeout
 
 //TX Power values 2 to 20
 #define LORA_TX_2 2

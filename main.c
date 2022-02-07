@@ -14,6 +14,11 @@
 
 int main()
 {
+    //LED
+    const uint LED_PIN = PICO_DEFAULT_LED_PIN;
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+    gpio_put(PICO_DEFAULT_LED_PIN, 0);
     //init Pi Pico
     stdio_init_all();
 
@@ -27,10 +32,11 @@ int main()
         printf("Well shit\n");
     }
 
-    while (true)
-    {
-        lora_rx_continuous(&lora);
-    }
+    /**
+     * @brief Construct a new lora rx continuous object
+     *
+     */
+    lora_rx_continuous(&lora);
 
     return 0;
 }
