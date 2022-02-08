@@ -25,7 +25,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     }
 
     printf("Setting Lora Frequency \n");
-    lora_setFrequency(lora, 868E6);
+    lora_setFrequency(lora, Frequency_EU868);
 
     // set base addresses
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
@@ -38,7 +38,8 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
 
     // set Tx Power
-    setTxPower(lora, LORA_TX_17, PA_OUTPUT_PA_BOOST_PIN);
+    setTxPower(lora, LORA_TX_PWR_17, PA_OUTPUT_PA_BOOST_PIN);
+
     printf("lora begin finished \n");
 
     return 0;
@@ -91,7 +92,7 @@ void setTxPower(lora_t *lora, int level, int outputPin)
             {
                 level = 2;
             }
-            //Default value PA_HF/LF or +17dBm
+            // Default value PA_HF/LF or +17dBm
             SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_DAC, 0x84);
             setOCP(lora, 100);
         }
@@ -194,7 +195,7 @@ int lora_beginPacket(lora_t *lora, int implicitHeader)
 {
     printf("lora_beginPacket \n");
 
-    //Check whether a message is currently being sent
+    // Check whether a message is currently being sent
     if (lora_isTransmitting(lora))
     {
         return 0;
@@ -209,7 +210,7 @@ int lora_beginPacket(lora_t *lora, int implicitHeader)
     }
     else
     {
-        explicitHeaderMode(lora); //default
+        explicitHeaderMode(lora); // default
     }
 
     // reset FIFO address and paload length
@@ -233,8 +234,8 @@ int lora_endPacket(lora_t *lora, bool async)
         // wait for TX done
         while ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == 0)
         {
-            //https://github.com/arduino-libraries/Scheduler/blob/master/src/Scheduler.cpp
-            // yield();
+            // https://github.com/arduino-libraries/Scheduler/blob/master/src/Scheduler.cpp
+            //  yield();
         }
         // clear IRQ's
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
@@ -254,7 +255,7 @@ int lora_endPacket(lora_t *lora, bool async)
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
     lora_beginPacket(lora, 0);
-    //seralize data bevor sending it
+    // seralize data bevor sending it
 
     printf("lora_sendMessage\n");
 
@@ -266,8 +267,8 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
     if ((currentLength + size) > MAX_PKT_LENGTH)
     {
         size = MAX_PKT_LENGTH - currentLength;
-        //singe tx is enought
-        // write data
+        // singe tx is enought
+        //  write data
         for (size_t i = 0; i < size; i++)
         {
             printf("Writing data %d\n", i);
@@ -283,7 +284,7 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
     }
     else
     {
-        //The Message needs to be send in single packages
+        // The Message needs to be send in single packages
     }
 
     return size;
@@ -292,13 +293,15 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 size_t lora_reciveMessage(lora_t *lora, const char *msg)
 {
     lora_rx_continuous(lora);
-    printf("REG_PAYLOAD_LENGTH %d \n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH));
-    printf("REGRXPACKETCNTLSB %d \n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REGRXPACKETCNTLSB));
-    printf("REGRXPACKETCNTMSB %d \n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REGRXPACKETCNTMSB));
     return 8u;
 }
 
-//Lora Modes
+int lora_packetRssi(lora_t *lora)
+{
+    return (-157 + SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PKT_RSSI_VALUE));
+}
+
+// Lora Modes
 void lora_goToIdel(lora_t *lora)
 {
     printf("lora_goToIdle \n");
@@ -306,7 +309,7 @@ void lora_goToIdel(lora_t *lora)
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_STDBY);
 }
 
-//Will wipe FIFO Buffer
+// Will wipe FIFO Buffer
 void lora_goToSleep(lora_t *lora)
 {
     printf("lora_goToSleep \n");
@@ -316,29 +319,62 @@ void lora_goToSleep(lora_t *lora)
 
 void lora_tx_single(lora_t *lora)
 {
-    printf("Lora_tx_single");
+    printf("Lora_tx_single\n");
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
-}
-
-void lora_rx_single(lora_t *lora)
-{
-    printf("Lora_rx_single");
-    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_SINGLE);
-}
-
-void lora_rx_continuous(lora_t *lora)
-{
-    printf("Lora_rx_continuous");
-    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
-
     while (true)
     {
         if (SX1276_GET_GPIO_VALUE(lora->sx1276, LORA_DIO0))
         {
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            printf("GPIO war 1");
+            printf("TX_DONE\n");
             break;
         }
         sleep_ms(1000);
     }
+}
+
+void lora_rx_single(lora_t *lora)
+{
+    printf("Lora_rx_single\n");
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_SINGLE);
+}
+
+void lora_rx_continuous(lora_t *lora)
+{
+    printf("Lora_rx_continuous\n");
+
+    lora_goToSleep(lora);
+    uint8_t mode = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE);
+    printf("LoRa Mode = %d \n", mode);
+
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
+    mode = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE);
+    printf("LoRa Mode = %d \n", mode);
+    uint8_t info;
+
+    while (true)
+    {
+        info = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS);
+        printf("reg war = %x", info);
+        if (SX1276_GET_GPIO_VALUE(lora->sx1276, LORA_DIO0))
+        {
+            gpio_put(PICO_DEFAULT_LED_PIN, 1);
+            printf("GPIO war 1");
+            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, 0xFF);
+            break;
+        }
+        sleep_ms(100);
+    }
+    // Check if the recived Package is ok
+    //  ValidHeader PayloadCrcError RxDone RxTimeout
+
+    // Extract Payload from FIFO
+    // RegRxNbBytes RegFifoAddrPtr RegFifoRxCurrentAddr
+    uint8_t currentPos = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FIFO_RX_CURRENT_ADDR);
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, currentPos);
+    uint8_t length = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_NB_BYT);
+
+    SX1276_READ(lora->sx1276, REG_FIFO, length);
+
+    printf("RSSI : %d\n", lora_packetRssi(lora));
 }

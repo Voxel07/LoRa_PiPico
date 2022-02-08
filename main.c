@@ -14,23 +14,27 @@
 
 int main()
 {
-    //LED
+    // LED
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
     gpio_put(PICO_DEFAULT_LED_PIN, 0);
-    //init Pi Pico
+    // init Pi Pico
     stdio_init_all();
 
     lora_t lora;
     sx1276_t sx1276;
 
-    //init Lora Module
+    // init Lora Module
     printf("Init Lora\n");
     if (lora_begin(&lora, &sx1276, spi0, REG_LR_VERSION))
     {
         printf("Well shit\n");
+        return 1;
     }
+
+    // const char *msg = "hallo";
+    // lora_sendMessage(&lora, msg, sizeof(msg));
 
     /**
      * @brief Construct a new lora rx continuous object
