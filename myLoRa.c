@@ -1,6 +1,6 @@
 #include "myLoRa.h"
 #include "sx1276.h"
-
+#define DEBUG 1
 /**
  * @brief
  *
@@ -23,23 +23,21 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
         printf("Wrong Version detected: %d \n", version);
         return 1;
     }
+    // Set the Modem into Lora Mode
+    lora_goToSleep(lora);
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, 0x80);
 
     printf("Setting Lora Frequency \n");
     lora_setFrequency(lora, Frequency_EU868);
-
     // set base addresses
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
-
     // set LNA boost
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_LNA, SX1276_READ_SINGLE_BYTE(sx1276, REG_LNA) | 0x03);
-
     // set auto AGC
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
-
     // set Tx Power
     setTxPower(lora, LORA_TX_PWR_17, PA_OUTPUT_PA_BOOST_PIN);
-
     printf("lora begin finished \n");
 
     return 0;
@@ -224,7 +222,9 @@ int lora_endPacket(lora_t *lora, bool async)
 {
 
     if ((async) && (lora->_onTxDone))
+    {
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_DIO_MAPPING_1, 0x40); // DIO0 => TXDONE
+    }
 
     // put in TX mode
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
@@ -234,8 +234,7 @@ int lora_endPacket(lora_t *lora, bool async)
         // wait for TX done
         while ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == 0)
         {
-            // https://github.com/arduino-libraries/Scheduler/blob/master/src/Scheduler.cpp
-            //  yield();
+            //
         }
         // clear IRQ's
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_TX_DONE_MASK);
@@ -254,33 +253,31 @@ int lora_endPacket(lora_t *lora, bool async)
  */
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
-    lora_beginPacket(lora, 0);
-    // seralize data bevor sending it
-
     printf("lora_sendMessage\n");
-
+    lora_beginPacket(lora, 0);
+// seralize data bevor sending it
+#ifdef DEBUG
+    lora_Debug(lora);
+#endif
     int currentLength = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH);
 
     printf("Currents fifo size: %d \n", currentLength);
+    printf("Currents  size: %d \n", size);
 
     // check if the new msg fits into the fifo register
-    if ((currentLength + size) > MAX_PKT_LENGTH)
+    if ((currentLength + size) < MAX_PKT_LENGTH)
     {
-        size = MAX_PKT_LENGTH - currentLength;
-        // singe tx is enought
-        //  write data
-        for (size_t i = 0; i < size; i++)
+        // write data
+        for (size_t i = 0; i < currentLength; i++)
         {
-            printf("Writing data %d\n", i);
             SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO, msg[i]);
         }
 
         // update length
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
 
-        lora_endPacket(lora, true);
-
-        lora_tx_single(lora);
+        lora_endPacket(lora, false);
+        // lora_tx_single(lora);
     }
     else
     {
@@ -290,16 +287,10 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
     return size;
 }
 
-size_t lora_reciveMessage(lora_t *lora, const char *msg)
-{
-    lora_rx_continuous(lora);
-    return 8u;
-}
-
 int lora_packetRssi(lora_t *lora)
 {
     // TODO: Fix calculation
-    return (-157 + SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PKT_RSSI_VALUE));
+    return (SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PKT_RSSI_VALUE) - (lora->_frequency < RF_MID_BAND_THRESHOLD ? RSSI_OFFSET_LF_PORT : RSSI_OFFSET_HF_PORT));
 }
 
 // Lora Modes
@@ -322,15 +313,12 @@ void lora_tx_single(lora_t *lora)
 {
     printf("Lora_tx_single\n");
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
-    while (true)
+#ifdef DEBUG
+    lora_Debug(lora);
+#endif
+    while ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == 0)
     {
-        if (SX1276_GET_GPIO_VALUE(lora->sx1276, LORA_DIO0))
-        {
-            gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            printf("TX_DONE\n");
-            break;
-        }
-        sleep_ms(1000);
+        // Wait for TX done
     }
 }
 
@@ -344,13 +332,8 @@ void lora_rx_continuous(lora_t *lora)
 {
     printf("Lora_rx_continuous\n");
 
-    lora_goToSleep(lora);
-    uint8_t mode = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE);
-    printf("LoRa Mode = %d \n", mode);
-
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
-    mode = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE);
-    printf("LoRa Mode = %d \n", mode);
+
     uint8_t info;
 
     while (true)
@@ -386,4 +369,49 @@ void lora_printRecivedMessage(lora_t *lora)
     SX1276_READ(lora->sx1276, REG_FIFO, length, data);                     // Get FiFo data
     printLoraPacket(data, length);                                         // Print the FiFo data
     printf("RSSI : %d\n", lora_packetRssi(lora));                          // Print paket infos
+}
+
+long lora_getFrequency(lora_t *lora)
+{
+    uint8_t LSB = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_LSB);
+    uint8_t MID = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MID);
+    uint8_t MSB = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MSB);
+    long value = LSB + (MID << 8) + (MSB << 16);
+
+    return ((FXOSC * value) / 2E19);
+}
+
+/**
+ * @brief This Function will print all relevant Register
+ *
+ * @param lora
+ */
+void lora_Debug(lora_t *lora)
+{
+    printf("----------------------------------------------------------------\n");
+    printf("OpMode: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE));
+    printf("Freq: %d\n", lora_getFrequency(lora));
+
+    printf("IRQ FLags Mask: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS_MASK));
+    printf("IRQ FLags: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS));
+
+    printf("Bytes last package: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_NB_BYT));
+    printf("Cnt valid headers: %x|%x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_HEADER_CNT_VALUE_LSB), (SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_HEADER_CNT_VALUE_MSB) << 8));
+    printf("Cnt valid headers2: %x|%x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_HEADER_CNT_VALUE_LSB_2), (SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_HEADER_CNT_VALUE_MSB_2) << 8));
+
+    printf("Modem stat: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_STAT));
+    printf("REG_MODEM_CONFIG_1: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1));
+    printf("REG_MODEM_CONFIG_2: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_2));
+    printf("REG_MODEM_CONFIG_3: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_3));
+
+    lora_debug_FiFo(lora);
+}
+
+void lora_debug_FiFo(lora_t *lora)
+{
+    uint8_t data[255];
+    SX1276_READ(lora->sx1276, REG_FIFO, 255, data); // Get FiFo data
+    printf("\n################FIFO###################\n");
+    printLoraPacket(data, 255);
+    printf("################ENDE###################\n");
 }

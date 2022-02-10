@@ -13,6 +13,8 @@
 #include "myLoRa.h"
 #include "pico.h"
 
+#define TX 1
+
 int main()
 {
     // LED
@@ -34,7 +36,29 @@ int main()
         return 1;
     }
 
+#ifdef RXC
     lora_rx_continuous(&lora);
+#endif
+
+#ifdef RXS
+    lora_rx_single(&lora);
+#endif
+
+#ifdef TX
+    char *msg = "hallo 0";
+    lora_sendMessage(&lora, msg, strlen(msg));
+    sleep_ms(1000);
+    char *msg2 = "hallo 1";
+    lora_sendMessage(&lora, msg2, strlen(msg2));
+    sleep_ms(1000);
+    char *msg3 = "hallo 2";
+    lora_sendMessage(&lora, msg3, strlen(msg3));
+    sleep_ms(1000);
+    char *msg4 = "hallo 3";
+    lora_sendMessage(&lora, msg4, strlen(msg4));
+    sleep_ms(1000);
+
+#endif
 
     return 0;
 }

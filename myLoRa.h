@@ -76,6 +76,7 @@
 #define REG_FRF_MSB 0x06
 #define REG_FRF_MID 0x07
 #define REG_FRF_LSB 0x08
+#define FXOSC 32E6 // fixed value needed for freqeuncy calcualtion
 
 // TX
 #define REG_PA_CONFIG 0x09
@@ -90,22 +91,32 @@
 #define REG_LNA 0x0c
 #define REG_RX_NB_BYT 0x13
 #define REG_PKT_RSSI_VALUE 0x1A
+#define REG_RX_HEADER_CNT_VALUE_LSB 0x14
+#define REG_RX_HEADER_CNT_VALUE_MSB 0x15
+#define REG_RX_HEADER_CNT_VALUE_LSB_2 0x16
+#define REG_RX_HEADER_CNT_VALUE_MSB_2 0x17
 
 // setOCP
 #define REG_OCP 0x0b
 
+#define REG_MODEM_STAT 0x18
 #define REG_MODEM_CONFIG_1 0x1d
 #define REG_MODEM_CONFIG_2 0x1e
 #define REG_MODEM_CONFIG_3 0x26
 
 // isTransmitting
 #define REG_OP_MODE 0x01
-#define REG_IRQ_FLAGS 0x12
 
 // IRQ masks
+#define REG_IRQ_FLAGS_MASK 0x11
+#define REG_IRQ_FLAGS 0x12
 #define IRQ_TX_DONE_MASK 0x08
 #define IRQ_PAYLOAD_CRC_ERROR_MASK 0x20
 #define IRQ_RX_DONE_MASK 0x40
+
+#define RF_MID_BAND_THRESHOLD 525E6
+#define RSSI_OFFSET_HF_PORT 157
+#define RSSI_OFFSET_LF_PORT 164
 
 #define PA_OUTPUT_RFO_PIN 0
 #define PA_OUTPUT_PA_BOOST_PIN 1
@@ -129,8 +140,6 @@
 // Lora info
 #define REG_PAYLOAD_LENGTH 0x22
 #define REG_FIFO_ADDR_PTR 0x0d
-#define REGRXPACKETCNTLSB 0x17
-#define REGRXPACKETCNTMSB 0x16
 
 // FIFO
 #define REG_FIFO 0x00 // RegFifoRxBaseAddr
@@ -158,11 +167,12 @@ typedef struct lora
 uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t address);
 void setTxPower(lora_t *lora, int level, int outputPin);
 void lora_setFrequency(lora_t *lora, long frequency);
+long lora_getFrequency(lora_t *lora);
 void setOCP(lora_t *lora, uint8_t mA);
 
 // Message sending function group
 int lora_beginPacket(lora_t *lora, int implicitHeader);
-int endPacket(lora_t *lora, bool async);
+int lora_endPacket(lora_t *lora, bool async);
 bool lora_isTransmitting(lora_t *lora);
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size);
 
@@ -170,9 +180,6 @@ void explicitHeaderMode();
 void implicitHeaderMode();
 
 // Message reciving function group
-size_t lora_reciveMessage(lora_t *lora, const char *msg);
-// size_t lora_reciveSingleMessage(lora_t *lora, const char *msg);
-// size_t lora_reciveMessages(lora_t *lora, const char *msg);
 int lora_packetRssi(lora_t *lora);
 void lora_printRecivedMessage(lora_t *lora);
 
@@ -182,5 +189,9 @@ void lora_goToSleep(lora_t *lora);
 void lora_tx_single(lora_t *lora);
 void lora_rx_single(lora_t *lora);
 void lora_rx_continuous(lora_t *lora);
+
+// Debug
+void lora_Debug(lora_t *lora);
+void lora_debug_FiFo(lora_t *lora);
 
 #endif
