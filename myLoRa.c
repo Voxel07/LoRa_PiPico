@@ -298,6 +298,7 @@ size_t lora_reciveMessage(lora_t *lora, const char *msg)
 
 int lora_packetRssi(lora_t *lora)
 {
+    // TODO: Fix calculation
     return (-157 + SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PKT_RSSI_VALUE));
 }
 
@@ -354,27 +355,35 @@ void lora_rx_continuous(lora_t *lora)
 
     while (true)
     {
-        info = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS);
-        printf("reg war = %x", info);
+        // info = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS);
+        // printf("reg war = %x", info);
         if (SX1276_GET_GPIO_VALUE(lora->sx1276, LORA_DIO0))
         {
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            printf("GPIO war 1");
+            printf("Recived a message\n");
             SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, 0xFF);
-            break;
+
+            // Call ISR
+            lora_printRecivedMessage(lora);
+            // break;
         }
-        sleep_ms(100);
     }
+}
+
+void lora_printRecivedMessage(lora_t *lora)
+{
     // Check if the recived Package is ok
     //  ValidHeader PayloadCrcError RxDone RxTimeout
+    // TODO:
 
     // Extract Payload from FIFO
     // RegRxNbBytes RegFifoAddrPtr RegFifoRxCurrentAddr
     uint8_t currentPos = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FIFO_RX_CURRENT_ADDR);
-    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, currentPos);
     uint8_t length = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_NB_BYT);
+    uint8_t data[length];
 
-    SX1276_READ(lora->sx1276, REG_FIFO, length);
-
-    printf("RSSI : %d\n", lora_packetRssi(lora));
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, currentPos); // Set FiFo ptr to corrert position
+    SX1276_READ(lora->sx1276, REG_FIFO, length, data);                     // Get FiFo data
+    printLoraPacket(data, length);                                         // Print the FiFo data
+    printf("RSSI : %d\n", lora_packetRssi(lora));                          // Print paket infos
 }

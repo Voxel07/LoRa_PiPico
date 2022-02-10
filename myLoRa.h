@@ -2,6 +2,7 @@
 #define LORA_H
 
 #include "sx1276.h"
+#include "pico.h"
 
 #define SF 9                      // 7-12
 #define Bandwith 125              // 125k | 250k
@@ -173,6 +174,7 @@ size_t lora_reciveMessage(lora_t *lora, const char *msg);
 // size_t lora_reciveSingleMessage(lora_t *lora, const char *msg);
 // size_t lora_reciveMessages(lora_t *lora, const char *msg);
 int lora_packetRssi(lora_t *lora);
+void lora_printRecivedMessage(lora_t *lora);
 
 // Lora Modes
 void lora_goToIdel(lora_t *lora);

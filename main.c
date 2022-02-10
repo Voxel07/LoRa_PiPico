@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "myLoRa.h"
+#include "pico.h"
 
 int main()
 {
@@ -33,13 +34,6 @@ int main()
         return 1;
     }
 
-    // const char *msg = "hallo";
-    // lora_sendMessage(&lora, msg, sizeof(msg));
-
-    /**
-     * @brief Construct a new lora rx continuous object
-     *
-     */
     lora_rx_continuous(&lora);
 
     return 0;

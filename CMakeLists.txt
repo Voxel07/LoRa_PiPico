@@ -13,6 +13,7 @@ add_executable(${PROJECT_NAME}
     main.c
     myLoRa.c
     sx1276.c
+    pico.c
 )
 
 pico_add_extra_outputs(${PROJECT_NAME})

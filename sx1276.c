@@ -72,12 +72,11 @@ uint8_t SX1276_READ_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr)
     return rxData;
 }
 
-void SX1276_READ(sx1276_t *sx1276, uint8_t addr, size_t len)
+void SX1276_READ(sx1276_t *sx1276, uint8_t addr, size_t len, uint8_t *data)
 {
     gpio_put(sx1276->_cs, 0); // start communication
     uint8_t dst = addr & READ_OPERATION;
-    uint8_t dataBuffer[len];
-    dataBuffer[0] = dst;
+
     // Check if we can write data to the spi device
     if (spi_is_writable(sx1276->spi))
     {
@@ -88,7 +87,7 @@ void SX1276_READ(sx1276_t *sx1276, uint8_t addr, size_t len)
         printf("not writeable\n");
     }
 
-    spi_read_blocking(sx1276->spi, 0, dataBuffer, len); // read value of register
+    spi_read_blocking(sx1276->spi, 0, data, len); // read value of register
 
     gpio_put(sx1276->_cs, 1); // stop communication
 }
