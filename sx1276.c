@@ -125,16 +125,16 @@ void SX1276_WRITE_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr, uint8_t data)
  * @param data
  * @param size
  */
-void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, uint8_t *data, size_t size)
+void SX1276_WRITE(sx1276_t *sx1276, uint8_t addr, const char *data, size_t size)
 {
-    uint8_t txData[size + 1];
+    uint8_t txData[1];
     txData[0] = addr | WRITE_OPERATION; // ensure that Bit 7 is 1 aka write operation
-    memcpy(&txData[1], data, size);
 
     gpio_put(sx1276->_cs, 0);
     if (spi_is_writable(sx1276->spi))
     {
-        spi_write_blocking(sx1276->spi, txData, size);
+        spi_write_blocking(sx1276->spi, txData, 1);
+        spi_write_blocking(sx1276->spi, data, size);
     }
     else
     {

@@ -45,18 +45,23 @@ int main()
 #endif
 
 #ifdef TX
-    char *msg = "hallo 0";
-    lora_sendMessage(&lora, msg, strlen(msg));
-    sleep_ms(1000);
-    char *msg2 = "hallo 1";
-    lora_sendMessage(&lora, msg2, strlen(msg2));
-    sleep_ms(1000);
-    char *msg3 = "hallo 2";
-    lora_sendMessage(&lora, msg3, strlen(msg3));
-    sleep_ms(1000);
-    char *msg4 = "hallo 3";
-    lora_sendMessage(&lora, msg4, strlen(msg4));
-    sleep_ms(1000);
+
+    int cnt = '0';
+    char arraypls[8] = {'H', 'a', 'l', 'l', 'o', ' ', ' ', '\n'};
+    char *zulang = "123456789123456789123465789123465798132465798132465789132456798ablololololololtopkekdas ist doch dumm warum ist der Sepciher so klein Speicher schreibt man nicht so, ah yes sepciher o.O <-Gimme some space-> 123456789123456789123465789123465798132465798132465789132456798ablololololololtopkekdas ist doch dumm warum ist der Sepciher so klein Speicher schreibt man nicht so, ah yes sepciher o.O";
+    // 123456789123456789123465789123465798132465798132465789132456798ablololololololtopkekdas ist doch dumm warum ist der Sepciher so klein Speicher schreibt man nicht so, ah yes sepciher o.O
+    lora_sendMessage(&lora, zulang, strlen(zulang));
+
+    while (true)
+    {
+        // It werks ! ayyyyyyyyyyyyyy
+        arraypls[6] = cnt++;
+        printf("msg = %s\n", arraypls);
+        lora_sendMessage(&lora, arraypls, strlen(arraypls));
+        sleep_ms(1000);
+        if (cnt >= '9')
+            cnt = '0';
+    }
 
 #endif
 

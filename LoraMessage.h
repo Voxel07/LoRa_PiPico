@@ -6,6 +6,9 @@ typedef struct LoraMessage
 {
     uint32_t timestamp;
     char *msg;
+    // msg gesMsgCnt
+    // msg number
+    // ID
 
 } LoraMessage_t;
 

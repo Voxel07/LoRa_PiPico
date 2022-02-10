@@ -82,6 +82,7 @@
 #define REG_PA_CONFIG 0x09
 #define REG_PA_DAC 0x4d
 #define MAX_PKT_LENGTH 255
+#define MAX_PAYLOAD_LENGTH 128
 #define REG_FIFO_TX_BASE_ADDR 0x0e
 // #define REG_FIFI_TX_CURRENT_ADDR
 
@@ -192,6 +193,5 @@ void lora_rx_continuous(lora_t *lora);
 
 // Debug
 void lora_Debug(lora_t *lora);
-void lora_debug_FiFo(lora_t *lora);
 
 #endif

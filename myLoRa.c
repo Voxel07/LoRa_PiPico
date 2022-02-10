@@ -1,6 +1,5 @@
 #include "myLoRa.h"
 #include "sx1276.h"
-#define DEBUG 1
 /**
  * @brief
  *
@@ -30,7 +29,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     printf("Setting Lora Frequency \n");
     lora_setFrequency(lora, Frequency_EU868);
     // set base addresses
-    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0);
+    SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0x80);
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
     // set LNA boost
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_LNA, SX1276_READ_SINGLE_BYTE(sx1276, REG_LNA) | 0x03);
@@ -212,9 +211,8 @@ int lora_beginPacket(lora_t *lora, int implicitHeader)
     }
 
     // reset FIFO address and paload length
-    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, 0);
-    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, 0);
-
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, 0x80);
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, 0x00);
     return 1;
 }
 
@@ -254,24 +252,20 @@ int lora_endPacket(lora_t *lora, bool async)
 size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 {
     printf("lora_sendMessage\n");
-    lora_beginPacket(lora, 0);
-// seralize data bevor sending it
-#ifdef DEBUG
-    lora_Debug(lora);
-#endif
+    lora_beginPacket(lora, 0); // Explicit Header Mode
+
+    // seralize data bevor sending it
+
     int currentLength = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH);
 
     printf("Currents fifo size: %d \n", currentLength);
     printf("Currents  size: %d \n", size);
 
     // check if the new msg fits into the fifo register
-    if ((currentLength + size) < MAX_PKT_LENGTH)
+    if ((currentLength + size) < MAX_PAYLOAD_LENGTH)
     {
-        // write data
-        for (size_t i = 0; i < currentLength; i++)
-        {
-            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO, msg[i]);
-        }
+
+        SX1276_WRITE(lora->sx1276, REG_FIFO, msg, size);
 
         // update length
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
@@ -279,8 +273,9 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
         lora_endPacket(lora, false);
         // lora_tx_single(lora);
     }
-    else
+    else // Split msg how ? kp !
     {
+        // size = MAX_PKT_LENGTH - currentLength;
         // The Message needs to be send in single packages
     }
 
@@ -313,9 +308,7 @@ void lora_tx_single(lora_t *lora)
 {
     printf("Lora_tx_single\n");
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_TX);
-#ifdef DEBUG
-    lora_Debug(lora);
-#endif
+
     while ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK) == 0)
     {
         // Wait for TX done
@@ -373,6 +366,10 @@ void lora_printRecivedMessage(lora_t *lora)
 
 long lora_getFrequency(lora_t *lora)
 {
+    // return (unsigned long)((double)(((unsigned long)readRegister(REG_FRFMSB) << 16) |
+    //                                 ((unsigned long)readRegister(REG_FRFMID) << 8) |
+    //                                 ((unsigned long)readRegister(REG_FRFLSB))) *
+    //                        FREQ_STEP);
     uint8_t LSB = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_LSB);
     uint8_t MID = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MID);
     uint8_t MSB = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MSB);
@@ -404,14 +401,6 @@ void lora_Debug(lora_t *lora)
     printf("REG_MODEM_CONFIG_2: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_2));
     printf("REG_MODEM_CONFIG_3: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_3));
 
-    lora_debug_FiFo(lora);
-}
-
-void lora_debug_FiFo(lora_t *lora)
-{
-    uint8_t data[255];
-    SX1276_READ(lora->sx1276, REG_FIFO, 255, data); // Get FiFo data
-    printf("\n################FIFO###################\n");
-    printLoraPacket(data, 255);
-    printf("################ENDE###################\n");
+    printf("FiFo Ptr Pos: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR));
+    printf("FiFo payload len %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH));
 }
