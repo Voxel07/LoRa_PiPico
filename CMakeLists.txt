@@ -14,6 +14,7 @@ add_executable(${PROJECT_NAME}
     myLoRa.c
     sx1276.c
     pico.c
+    LightChrono.cpp
 )
 
 pico_add_extra_outputs(${PROJECT_NAME})
