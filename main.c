@@ -12,7 +12,7 @@
 #include "pico/stdlib.h"
 #include "myLoRa.h"
 #include "pico.h"
-
+#include "LoraMessage.h"
 #define TX 1
 
 int main()
@@ -27,7 +27,7 @@ int main()
 
     lora_t lora;
     sx1276_t sx1276;
-
+    LoraMessage_t LoraMessage;
     // init Lora Module
     printf("Init Lora\n");
     if (lora_begin(&lora, &sx1276, spi0, REG_LR_VERSION))
@@ -35,6 +35,11 @@ int main()
         printf("Well shit\n");
         return 1;
     }
+
+    loraMessage_setId(&LoraMessage);
+
+    printf("%llu\n", LoraMessage.messageId);
+    printf("%d\n", LoraMessage_getSize(&LoraMessage));
 
 #ifdef RXC
     lora_rx_continuous(&lora);
@@ -46,15 +51,13 @@ int main()
 
 #ifdef TX
 
+    LoraMessage_serialize(&LoraMessage);
+
     int cnt = '0';
-    char arraypls[8] = {'H', 'a', 'l', 'l', 'o', ' ', ' ', '\n'};
-    char *zulang = "123456789123456789123465789123465798132465798132465789132456798ablololololololtopkekdas ist doch dumm warum ist der Sepciher so klein Speicher schreibt man nicht so, ah yes sepciher o.O <-Gimme some space-> 123456789123456789123465789123465798132465798132465789132456798ablololololololtopkekdas ist doch dumm warum ist der Sepciher so klein Speicher schreibt man nicht so, ah yes sepciher o.O";
-    // 123456789123456789123465789123465798132465798132465789132456798ablololololololtopkekdas ist doch dumm warum ist der Sepciher so klein Speicher schreibt man nicht so, ah yes sepciher o.O
-    lora_sendMessage(&lora, zulang, strlen(zulang));
+    uint8_t arraypls[8] = {'H', 'a', 'l', 'l', 'o', ' ', ' '};
 
     while (true)
     {
-        // It werks ! ayyyyyyyyyyyyyy
         arraypls[6] = cnt++;
         printf("msg = %s\n", arraypls);
         lora_sendMessage(&lora, arraypls, strlen(arraypls));

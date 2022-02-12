@@ -348,20 +348,28 @@ void lora_rx_continuous(lora_t *lora)
 
 void lora_printRecivedMessage(lora_t *lora)
 {
-    // Check if the recived Package is ok
-    //  ValidHeader PayloadCrcError RxDone RxTimeout
-    // TODO:
 
     // Extract Payload from FIFO
-    // RegRxNbBytes RegFifoAddrPtr RegFifoRxCurrentAddr
     uint8_t currentPos = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FIFO_RX_CURRENT_ADDR);
     uint8_t length = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_NB_BYT);
     uint8_t data[length];
 
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, currentPos); // Set FiFo ptr to corrert position
     SX1276_READ(lora->sx1276, REG_FIFO, length, data);                     // Get FiFo data
-    printLoraPacket(data, length);                                         // Print the FiFo data
-    printf("RSSI : %d\n", lora_packetRssi(lora));                          // Print paket infos
+
+    // Print the FiFo data
+    for (size_t i = 0; i < length; i++)
+    {
+        data[i] = toupper(data[i]);
+    }
+
+    for (size_t i = 0; i < length; i++)
+    {
+        printf("%c", data[i]);
+    }
+    printf("\n");
+
+    printf("RSSI : %d\n", lora_packetRssi(lora)); // Print paket infos
 }
 
 long lora_getFrequency(lora_t *lora)

@@ -13,8 +13,9 @@ add_executable(${PROJECT_NAME}
     main.c
     myLoRa.c
     sx1276.c
-    pico.c
     LightChrono.cpp
+    pressure.c
+    LoraMessage.c
 )
 
 pico_add_extra_outputs(${PROJECT_NAME})
@@ -23,6 +24,7 @@ target_link_libraries(${PROJECT_NAME}
     pico_stdlib
     hardware_spi
     hardware_gpio
+    pico_unique_id
 )
 
 target_include_directories(

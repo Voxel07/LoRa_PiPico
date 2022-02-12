@@ -2,7 +2,7 @@
 #define LORA_H
 
 #include "sx1276.h"
-#include "pico.h"
+#include <ctype.h>
 
 #define SF 9                      // 7-12
 #define Bandwith 125              // 125k | 250k
