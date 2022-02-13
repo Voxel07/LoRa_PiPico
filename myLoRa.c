@@ -13,7 +13,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
 {
     lora->sx1276 = sx1276;
 
-    sx1276_init_spi(sx1276, spi, LORA_MOSI, LORA_MISO, LORA_SCK, LORA_CS, LORA_RESET, LORA_DIO0, LORA_DIO1);
+    sx1276_init_spi(sx1276, spi, LORA_MOSI, LORA_MISO, LORA_SCK, LORA_CS);
 
     uint8_t version = SX1276_READ_SINGLE_BYTE(sx1276, addr);
 
@@ -319,6 +319,16 @@ void lora_rx_single(lora_t *lora)
 {
     printf("Lora_rx_single\n");
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_SINGLE);
+    while ((SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_RX_DONE_MASK) == 0)
+    {
+    }
+
+    gpio_put(PICO_DEFAULT_LED_PIN, 1);
+    printf("Recived a message\n");
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
+    // Call ISR
+    lora_printRecivedMessage(lora);
+    // break;
 }
 
 void lora_rx_continuous(lora_t *lora)
@@ -327,18 +337,13 @@ void lora_rx_continuous(lora_t *lora)
 
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, MODE_LONG_RANGE_MODE | MODE_RX_CONTINUOUS);
 
-    uint8_t info;
-
     while (true)
     {
-        // info = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS);
-        // printf("reg war = %x", info);
-        if (SX1276_GET_GPIO_VALUE(lora->sx1276, LORA_DIO0))
+        if (!(SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_RX_DONE_MASK) == 0)
         {
             gpio_put(PICO_DEFAULT_LED_PIN, 1);
             printf("Recived a message\n");
-            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, 0xFF);
-
+            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
             // Call ISR
             lora_printRecivedMessage(lora);
             // break;

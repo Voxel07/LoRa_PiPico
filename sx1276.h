@@ -30,7 +30,7 @@ typedef struct sx1276
 
 } sx1276_t;
 
-void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs, uint8_t reset, uint8_t dio0, uint8_t dio1);
+void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs);
 
 uint8_t SX1276_READ_SINGLE_BYTE(sx1276_t *sx1276, uint8_t addr);
 void SX1276_READ(sx1276_t *sx1276, uint8_t addr, size_t len, uint8_t *data);

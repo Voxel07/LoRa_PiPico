@@ -1,6 +1,6 @@
 #include "sx1276.h"
 
-void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs, uint8_t reset, uint8_t dio0, uint8_t dio1)
+void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t miso, uint8_t sck, uint8_t cs)
 {
     printf("init SPI\n");
     // init spi
@@ -11,9 +11,6 @@ void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t mi
     sx1276->_miso = miso;
     sx1276->_sck = sck;
     sx1276->_cs = cs;
-    sx1276->_reset = reset;
-    sx1276->_dio0 = dio0;
-    sx1276->_dio1 = dio1;
 
     // validate
     // spi_init((sx1276->spi == 0) ? spi0 : spi1, 10 * 1000 * 1000);
@@ -26,22 +23,9 @@ void sx1276_init_spi(sx1276_t *sx1276, spi_inst_t *spi, uint8_t mosi, uint8_t mi
     gpio_set_function(sx1276->_sck, GPIO_FUNC_SPI);
 
     // init gpios
-    gpio_init(sx1276->_reset);
-    gpio_set_dir(sx1276->_reset, GPIO_OUT);
-    gpio_put(sx1276->_reset, 1);
-    gpio_pull_up(sx1276->_reset);
-
     gpio_init(sx1276->_cs);
     gpio_set_dir(sx1276->_cs, GPIO_OUT);
     gpio_put(sx1276->_cs, 1);
-
-    gpio_init(sx1276->_dio0);
-    gpio_set_dir(sx1276->_dio0, GPIO_IN);
-    gpio_pull_up(sx1276->_dio0);
-
-    gpio_init(sx1276->_dio1);
-    gpio_set_dir(sx1276->_dio1, GPIO_IN);
-    gpio_pull_up(sx1276->_dio1);
 }
 
 /**
