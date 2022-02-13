@@ -1,5 +1,6 @@
 #include "myLoRa.h"
 #include "sx1276.h"
+
 /**
  * @brief
  *
@@ -9,13 +10,13 @@
  * @param addr
  * @return uint8_t
  */
-uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr)
+uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint32_t frequency)
 {
     lora->sx1276 = sx1276;
 
     sx1276_init_spi(sx1276, spi, LORA_MOSI, LORA_MISO, LORA_SCK, LORA_CS);
 
-    uint8_t version = SX1276_READ_SINGLE_BYTE(sx1276, addr);
+    uint8_t version = SX1276_READ_SINGLE_BYTE(sx1276, REG_LR_VERSION);
 
     if (version != 0x12)
     {
@@ -27,13 +28,13 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t addr
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_OP_MODE, 0x80);
 
     printf("Setting Lora Frequency \n");
-    lora_setFrequency(lora, Frequency_EU868);
+    lora_setFrequency(lora, frequency);
     // set base addresses
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_TX_BASE_ADDR, 0x80);
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_FIFO_RX_BASE_ADDR, 0);
     // set LNA boost
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_LNA, SX1276_READ_SINGLE_BYTE(sx1276, REG_LNA) | 0x03);
-    // set auto AGC
+    // set auto Error coding rate
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
     // set Tx Power
     setTxPower(lora, LORA_TX_PWR_17, PA_OUTPUT_PA_BOOST_PIN);
@@ -117,6 +118,14 @@ void lora_setFrequency(lora_t *lora, long frequency)
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FRF_LSB, (uint8_t)(frf >> 0));
 }
 
+// long lora_getFrequency(lora_t *lora)
+// {
+//     return (unsigned long)((double)(((unsigned long)SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MSB) << 16) |
+//                                     ((unsigned long)SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MID) << 8) |
+//                                     ((unsigned long)SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_LSB))) *
+//                            FREQ_STEP);
+// }
+
 /**
  * @brief Set max. current for Over Current Protection control
  *
@@ -172,7 +181,6 @@ bool lora_isTransmitting(lora_t *lora)
     }
 
     // No message is beeing sent
-    // C
     if (SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_TX_DONE_MASK)
     {
         // clear IRQ's
@@ -216,6 +224,13 @@ int lora_beginPacket(lora_t *lora, int implicitHeader)
     return 1;
 }
 
+/**
+ * @brief This function Sends the Package. It can be choosen if this task is done blocking aka sync or non blocking aka async
+ *
+ * @param lora
+ * @param async
+ * @return int
+ */
 int lora_endPacket(lora_t *lora, bool async)
 {
 
@@ -377,20 +392,25 @@ void lora_printRecivedMessage(lora_t *lora)
     printf("RSSI : %d\n", lora_packetRssi(lora)); // Print paket infos
 }
 
-long lora_getFrequency(lora_t *lora)
-{
-    // return (unsigned long)((double)(((unsigned long)readRegister(REG_FRFMSB) << 16) |
-    //                                 ((unsigned long)readRegister(REG_FRFMID) << 8) |
-    //                                 ((unsigned long)readRegister(REG_FRFLSB))) *
-    //                        FREQ_STEP);
-    uint8_t LSB = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_LSB);
-    uint8_t MID = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MID);
-    uint8_t MSB = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FRF_MSB);
-    long value = LSB + (MID << 8) + (MSB << 16);
+// long lora_packetFrequencyError(lora_t *lora)
+// {
+//     int32_t freqError = 0;
+//     freqError = static_cast<int32_t>(SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_MSB) & B111);
+//     freqError <<= 8L;
+//     freqError += static_cast<int32_t>(SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_MID));
+//     freqError <<= 8L;
+//     freqError += static_cast<int32_t>(SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_LSB));
 
-    return ((FXOSC * value) / 2E19);
-}
+//     if (SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_MSB) & B1000)
+//     {                        // Sign bit is on
+//         freqError -= 524288; // B1000'0000'0000'0000'0000
+//     }
 
+//     const float fXtal = 32E6;                                                                                         // FXOSC: crystal oscillator (XTAL) frequency (2.5. Chip Specification, p. 14)
+//     const float fError = ((static_cast<float>(freqError) * (1L << 24)) / fXtal) * (getSignalBandwidth() / 500000.0f); // p. 37
+
+//     return static_cast<long>(fError);
+// }
 /**
  * @brief This Function will print all relevant Register
  *

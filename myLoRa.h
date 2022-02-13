@@ -165,8 +165,12 @@ typedef struct lora
 
 } lora_t;
 
-uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint8_t address);
+// Setup functions
+uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint32_t frequency);
 void setTxPower(lora_t *lora, int level, int outputPin);
+void lora_setBandwith(lora_t *lora, uint8_t BW);
+void lora_setCodingRate(lora_t *lora, uint8_t CR);
+void lora_SpreadingFactor(lora_t *lora, uint8_t CR);
 void lora_setFrequency(lora_t *lora, long frequency);
 long lora_getFrequency(lora_t *lora);
 void setOCP(lora_t *lora, uint8_t mA);

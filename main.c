@@ -30,7 +30,7 @@ int main()
     LoraMessage_t LoraMessage;
     // init Lora Module
     printf("Init Lora\n");
-    if (lora_begin(&lora, &sx1276, spi0, REG_LR_VERSION))
+    if (lora_begin(&lora, &sx1276, spi0, Frequency_EU868))
     {
         printf("Well shit\n");
         return 1;
