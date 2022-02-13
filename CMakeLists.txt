@@ -9,6 +9,9 @@ set(CNAKE_CXX_STANDARD 17)
 SET(GCC_COVERAGE_COMPILE_FLAGS "-O0")
 pico_sdk_init()
 
+add_subdirectory(libs)
+
+message("----------------"${CMAKE_SOURCE_DIR})
 add_executable(${PROJECT_NAME}
     main.c
     myLoRa.c
@@ -23,6 +26,7 @@ pico_add_extra_outputs(${PROJECT_NAME})
 target_link_libraries(${PROJECT_NAME}
     pico_stdlib
     hardware_spi
+    hardware_i2c
     hardware_gpio
     pico_unique_id
 )
