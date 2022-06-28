@@ -2,19 +2,31 @@
 #define LORA_DEFINES_H
 
 // Lora Spreading Factor
-#define LoRa_SF_6 6
-#define LoRa_SF_7 7
-#define LoRa_SF_8 8
-#define LoRa_SF_9 9
-#define LoRa_SF_10 10
-#define LoRa_SF_11 11
-#define LoRa_SF_12 12
+#define LoRa_SF_6 6 //64 chips / symbo
+#define LoRa_SF_7 7 //128 chips / symbol
+#define LoRa_SF_8 8 //256 chips / symbol
+#define LoRa_SF_9 9 //512 chips / symbol
+#define LoRa_SF_10 10 //1024 chips / symbol
+#define LoRa_SF_11 11 //2048 chips / symbol
+#define LoRa_SF_12 12 //4096 chips / symbol
+
+// Lora Bandwith
+#define LoRa_BW_0 0x00 //7.8kHz
+#define LoRa_BW_1 0x01 //10.4kHz
+#define LoRa_BW_2 0x02 //15.6kHz
+#define LoRa_BW_3 0x03 //20.8kHz
+#define LoRa_BW_4 0x04 //31.25kHz
+#define LoRa_BW_5 0x05 //41.7kHz
+#define LoRa_BW_6 0x06 //62.5kHz
+#define LoRa_BW_7 0x07 //1235kHz
+#define LoRa_BW_8 0x08 //250kHz
+#define LoRa_BW_9 0x09 //500kHz
 
 // Lora Cyclic Coding Overhead
-#define LoRa_CR_1 1
-#define LoRa_CR_2 2
-#define LoRa_CR_3 3
-#define LoRa_CR_4 4
+#define LoRa_CR_1 1 //4/5
+#define LoRa_CR_2 2 //4/6
+#define LoRa_CR_3 3 //4/7
+#define LoRa_CR_4 4 //4/8
 
 #define Bandwith 125              // 125k | 250k
 #define Frequency_EU443 443000000 //
@@ -57,9 +69,9 @@
 #define DR_1_Max_Payload 51
 #define DR_2_Max_Payload 51
 #define DR_3_Max_Payload 115
-#define DR_4_Max_Payload 242
-#define DR_5_Max_Payload 242
-#define DR_6_Max_Payload 242
+#define DR_4_Max_Payload 222
+#define DR_5_Max_Payload 222
+#define DR_6_Max_Payload 222
 
 // Delays in s
 #define RX1_Delay 1
@@ -67,9 +79,9 @@
 #define Join_Accept_1 5
 #define Join_Accept_2 6
 
-// Lora Pins
-#define LORA_MOSI 19
-#define LORA_MISO 16
+// Lora Pins | gpio nr // pin nr
+#define LORA_MOSI 19 // 25
+#define LORA_MISO 16 // 21
 #define LORA_SCK 18
 #define LORA_CS 8 // change to 17
 

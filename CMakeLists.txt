@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.12)
 
 include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
 
-project(PointToPoint C CXX ASM)
+project(LoRa C CXX ASM)
 
 set(CNAKE_C_STANDARD 11)
 set(CNAKE_CXX_STANDARD 17)
@@ -11,14 +11,13 @@ pico_sdk_init()
 
 add_subdirectory(libs)
 
-message("----------------"${CMAKE_SOURCE_DIR})
 add_executable(${PROJECT_NAME}
     main.c
     myLoRa.c
     sx1276.c
-    LightChrono.cpp
-    pressure.c
     LoraMessage.c
+    DS3231.c
+    DateTime.c
 )
 
 pico_add_extra_outputs(${PROJECT_NAME})

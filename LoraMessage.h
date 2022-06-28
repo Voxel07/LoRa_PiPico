@@ -2,17 +2,18 @@
 #define _LORA_MESSAGE_H_
 
 // #include <stdio.h>
-#include "pressure.h"
 #include "pico/unique_id.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "DS3231.h"
 
 #define NUMBER_OF_SENSORES 4
 
+
 /**
  * @brief This struct represents the Payload of a Lora Packet
- * @param messageId
+ * @param Id
  * @param timestamp
  * @param sensors
  * @param messageNumer
@@ -20,21 +21,17 @@
  */
 typedef struct LoraMessage
 {
-    uint64_t messageId;
-    uint32_t timestamp;
-    PressureSensor_t sensors[NUMBER_OF_SENSORES];
-    uint8_t messageNumer;
-    uint8_t messageCount;
-} LoraMessage_t;
+    // uint8_t messsageType;
+    uint64_t Id;                                //8bytes
+    uint32_t timestamp;                         //4bytes
+    uint8_t messageNumer;                       //1bytes
+    uint8_t messageCount;                       //1bytes
+    uint8_t numSensors;                         //1bytes
+    uint32_t pressureData[NUMBER_OF_SENSORES];  //4byte * x
+} LoraMessage_t; //31bytes
 
-void loraMessage_setId(LoraMessage_t *message);
-void loraMessage_setTimeStamp(LoraMessage_t *message);
-void loraMessage_setSensoreData(LoraMessage_t *message, PressureSensor_t sensors[NUMBER_OF_SENSORES], uint8_t seonsorCount);
-void loraMessage_setMessageNumber(LoraMessage_t *message, uint8_t number);
-void loraMessage_incMessageNumber(LoraMessage_t *message);
-void loraMessage_setMessageCount(LoraMessage_t *message, uint8_t count);
-uint8_t LoraMessage_getSize(LoraMessage_t *message);
-uint8_t *LoraMessage_serialize(LoraMessage_t *message);
-void LoraMessage_deSerialize(LoraMessage_t *message, uint8_t *msg, uint8_t length);
+void loraMessage_init(LoraMessage_t *message);
+void LoraMessage_serialize(const LoraMessage_t *message, uint8_t *buffer);
+LoraMessage_t LoraMessage_deSerialize(uint8_t msg[]);
 
 #endif

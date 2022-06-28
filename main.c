@@ -13,7 +13,7 @@
 #include "myLoRa.h"
 #include "pico.h"
 #include "LoraMessage.h"
-#define TX 1
+#define RXC 1
 
 int main()
 {
@@ -30,16 +30,11 @@ int main()
     LoraMessage_t LoraMessage;
     // init Lora Module
     printf("Init Lora\n");
-    if (lora_begin(&lora, &sx1276, spi0, Frequency_EU868))
+    if (lora_begin(&lora, &sx1276, spi0, Frequency_EU443))
     {
         printf("Well shit\n");
         return 1;
     }
-
-    loraMessage_setId(&LoraMessage);
-
-    printf("%llu\n", LoraMessage.messageId);
-    printf("%d\n", LoraMessage_getSize(&LoraMessage));
 
 #ifdef RXC
     lora_rx_continuous(&lora);
@@ -51,7 +46,21 @@ int main()
 
 #ifdef TX
 
-    LoraMessage_serialize(&LoraMessage);
+    loraMessage_init(&LoraMessage);
+    uint8_t buffer[35];
+    LoraMessage.messageCount = 100;
+    LoraMessage_serialize(&LoraMessage,buffer);
+    LoraMessage_t newMsg = LoraMessage_deSerialize(buffer);
+    for (size_t i = 0; i <= LoraMessage.messageCount; i++)
+    {
+        LoraMessage.messageNumer = i;
+        LoraMessage_serialize(&LoraMessage,buffer);
+        lora_sendMessage(&lora,buffer,sizeof(buffer));
+        if(LoraMessage.messageNumer == LoraMessage.messageCount){
+            i = 0;
+        }
+        sleep_ms(1000);
+    }
 
     int cnt = '0';
     uint8_t arraypls[8] = {'H', 'a', 'l', 'l', 'o', ' ', ' '};

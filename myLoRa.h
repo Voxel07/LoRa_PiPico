@@ -4,7 +4,7 @@
 #include "sx1276.h"
 #include <ctype.h>
 #include "LoraDefines.h"
-
+#include <stdlib.h>
 typedef struct loraconfig
 {
     bool explicedHeadermode;
@@ -21,25 +21,25 @@ typedef struct lora
     long _frequency;
     bool _onTxDone;
     bool _isTransmitting; // usefull?
-    int _implicitHeaderMode;
+    bool _implicitHeaderMode;
 
 } lora_t;
 
 // Setup functions
 uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint32_t frequency);
-void setTxPower(lora_t *lora, int level, int outputPin);
+void lora_setTxPower(lora_t *lora, int level, int outputPin);
 void lora_setBandwith(lora_t *lora, uint8_t BW);
 void lora_setCodingRate(lora_t *lora, uint8_t CR);
-void lora_SpreadingFactor(lora_t *lora, uint8_t CR);
+void lora_SpreadingFactor(lora_t *lora, uint8_t SF);
 void lora_setFrequency(lora_t *lora, long frequency);
 long lora_getFrequency(lora_t *lora);
-void setOCP(lora_t *lora, uint8_t mA);
+void lora_setOCP(lora_t *lora, uint8_t mA);
 
 // Message sending function group
 int lora_beginPacket(lora_t *lora, int implicitHeader);
 int lora_endPacket(lora_t *lora, bool async);
 bool lora_isTransmitting(lora_t *lora);
-size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size);
+size_t lora_sendMessage(lora_t *lora, const uint8_t *msg, size_t size);
 
 void explicitHeaderMode();
 void implicitHeaderMode();

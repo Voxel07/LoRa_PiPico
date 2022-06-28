@@ -1,103 +1,60 @@
 #include "LoraMessage.h"
 
-/**
- * @brief This adds a unique Id to the Lora Message. This is used to identify the Message on the reciving end.
- * The Id is the unique Id of the PiPico the programm is run on.
- *
- * @param message
- */
-void loraMessage_setId(LoraMessage_t *message)
+void loraMessage_init(LoraMessage_t *message)
 {
     uint64_t Id;
     pico_unique_board_id_t picoId;
-
     pico_get_unique_board_id(&picoId);
     memcpy(&Id, picoId.id, sizeof(Id));
-    message->messageId = Id;
-}
+    message->Id = Id;
 
-/**
- * @brief Set the Timestamp to the Lora Message. This is used to validate Packets on the reciving end.
- * The Time is taken form an external DS3231 RTC module
- *
- * @param message
- */
-void loraMessage_setTimeStamp(LoraMessage_t *message)
-{
-    message->timestamp = 123456789;
-}
+    ds3231_t rtc;
+    ds3231_init(&rtc,i2c0,0x68,I2C_FAST,12,13);
+    ds3231_set_32KHz_pin(&rtc, false);
+    dateTime_t dt_now;
+    ds3231_now(&rtc, &dt_now);
+    message->timestamp = datetime_to_epoch(&dt_now);
 
-/**
- * @brief Set the pressure Sensor data to the Lora Message
- *
- * @param message
- * @param sensors
- * @param seonsorCount
- */
-void loraMessage_setSensoreData(LoraMessage_t *message, PressureSensor_t sensors[NUMBER_OF_SENSORES], uint8_t seonsorCount)
-{
-    for (size_t i = 0; i < seonsorCount; i++)
+    for (size_t i = 0; i < NUMBER_OF_SENSORES; i++)
     {
-        message->sensors[i].SensoreId = sensors[i].SensoreId;
-        message->sensors[i].pressure = sensors[i].pressure;
+        message->pressureData[i] = rand();  // call sensor func
     }
-}
 
-/**
- * @brief Set the Number of the current packet beeing send. This is used when the payload is to big for a single message.
- * The reciver can then rebuild the complete message with this information.
- *
- * @param message
- * @param number
- */
-void loraMessage_setMessageNumber(LoraMessage_t *message, uint8_t number)
-{
+    message->messageCount = 1; // Enought space to send all data at once
     message->messageNumer = 1;
+    message->numSensors = NUMBER_OF_SENSORES;
 }
 
-/**
- * @brief Increaces the Number of the current packet. Has to be called after every succesfull tx.
- *
- * @param message
- */
-void loraMessage_incMessageNumber(LoraMessage_t *message)
+void LoraMessage_serialize(const LoraMessage_t *message, uint8_t *buffer)
 {
-    message->messageNumer++;
-}
+    uint8_t msg[31] = {0};
 
-/**
- * @brief Set the total number of packets when the payload is to big
- *
- * @param message
- * @param count
- */
-void loraMessage_setMessageCount(LoraMessage_t *message, uint8_t count)
-{
-    message->messageCount = 10;
-}
-
-/**
- * @brief Returns the current size of the LoraMessage in Byte
- *
- * @param message
- * @return uint8_t
- */
-uint8_t LoraMessage_getSize(LoraMessage_t *message)
-{
-    return sizeof(message->messageId) + sizeof(message->timestamp) + sizeof(message->messageNumer) + sizeof(message->messageCount) + sizeof(message->sensors->pressure) * NUMBER_OF_SENSORES + sizeof(message->sensors->SensoreId) * NUMBER_OF_SENSORES;
-}
-
-uint8_t *LoraMessage_serialize(LoraMessage_t *message)
-{
-    uint8_t *msg = malloc(50);
-
-    for (int i = 0; i < 8; ++i)
+    memcpy(&msg[0], &message->Id, sizeof(message->Id)); // Id           - Byte 0-7
+    memcpy(&msg[8], &message->timestamp, sizeof(message->timestamp)); // Timestamp    - Byte 8-11
+    msg[12] = message->messageNumer;                                  // MessageNr    - Byte 12
+    msg[13] = message->messageCount;                                  // MessageCount - Byte 13
+    msg[14] = message->numSensors;                                    // SensorCount  - Byte 14
+    for (uint8_t sensor = 0; sensor < message->numSensors; sensor++)
     {
-        msg[i] = (unsigned char)((((unsigned long long)message->messageId) >> (56 - (8 * i))) & 0xFFu);
+        memcpy(&msg[15 + sizeof(uint32_t)*sensor], &message->pressureData[sensor], sizeof(uint32_t)); // SensorData
     }
-    return msg;
+
+    memcpy(buffer,msg,31);
 }
 
-void LoraMessage_deSerialize(LoraMessage_t *message, uint8_t *msg, uint8_t length)
+LoraMessage_t LoraMessage_deSerialize(uint8_t msg[])
 {
+    LoraMessage_t message;
+
+    memcpy(&message.Id, &msg[0], sizeof(message.Id)); // Id          - Byte 0-7
+    memcpy(&message.timestamp, &msg[8], sizeof(message.timestamp)); // Timestamp   - Byte 8-11
+    message.messageNumer = msg[12];                                // MessageNr    - Byte 12
+    message.messageCount = msg[13];                                // MessageCount - Byte 13
+    message.numSensors = msg[14];                                  // SensorCount  - Byte 14
+    for (uint8_t sensor = 0; sensor < message.numSensors; sensor++)
+    {
+        memcpy(&message.pressureData[sensor], &msg[15 + sizeof(uint32_t)*sensor], sizeof(uint32_t)); // SensorData
+    }
+
+    return message;
 }

@@ -37,10 +37,56 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint32_t fre
     // set auto Error coding rate
     SX1276_WRITE_SINGLE_BYTE(sx1276, REG_MODEM_CONFIG_3, 0x04);
     // set Tx Power
-    setTxPower(lora, LORA_TX_PWR_17, PA_OUTPUT_PA_BOOST_PIN);
+    lora_setTxPower(lora, LORA_TX_PWR_17, PA_OUTPUT_PA_BOOST_PIN);
     printf("lora begin finished \n");
 
     return 0;
+}
+
+void lora_setBandwith(lora_t *lora, uint8_t BW)
+{
+    //Default is 0x07 -> 125kHz
+    if(BW < LoRa_BW_0 || BW > LoRa_BW_9) return; //Filer invalide Bandwith
+    if(lora->_frequency >= 169E6 && BW>=LoRa_BW_8) return; //Filter not supportet cobinations
+
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1, SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_MODEM_CONFIG_1)||BW);
+}
+
+void lora_setCodingRate(lora_t *lora, uint8_t CR)
+{
+    //Default is 0x01 4/5
+    if (CR < LoRa_CR_1 || CR > LoRa_CR_4 ) return; //Filer invalide CodingRate
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_MODEM_CONFIG_1, SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_MODEM_CONFIG_1)||CR);
+}
+
+/**
+ * @brief
+ * https://www.thethingsnetwork.org/airtime-calculator
+ * @param lora
+ * @param SF
+ */
+void lora_SpreadingFactor(lora_t *lora, uint8_t SF)
+{
+    //Default is 0x07 -> 64 chips / symbol
+    if(SF == LoRa_SF_6)
+    {
+        lora->_implicitHeaderMode = true;
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276,REG_MODEM_CONFIG_1,SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_MODEM_CONFIG_1)||0x01);
+    }
+    else if(SF < LoRa_SF_6 && SF >= LoRa_SF_12)
+    {
+        if (lora->_frequency > 196E6 && (SF == LoRa_SF_8 ||SF == LoRa_SF_9))
+        {
+            printf("SF8 & SF9 do not work with a frequency of %lu\n",lora->_frequency);
+            return;
+        }
+
+        SX1276_WRITE_SINGLE_BYTE(lora->sx1276,REG_MODEM_CONFIG_1,SF);
+    }
+    else
+    {
+        printf("Invalide SF recived.\n");
+    }
 }
 
 /**
@@ -50,7 +96,7 @@ uint8_t lora_begin(lora_t *lora, sx1276_t *sx1276, spi_inst_t *spi, uint32_t fre
  * @param level
  * @param outputPin
  */
-void setTxPower(lora_t *lora, int level, int outputPin)
+void lora_setTxPower(lora_t *lora, int level, int outputPin)
 {
     printf("setTxPower \n");
     if (PA_OUTPUT_RFO_PIN == outputPin)
@@ -82,7 +128,7 @@ void setTxPower(lora_t *lora, int level, int outputPin)
 
             // High Power +20 dBm Operation (Semtech SX1276/77/78/79 5.4.3.)
             SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_DAC, 0x87);
-            setOCP(lora, 140);
+            lora_setOCP(lora, 140);
         }
         else
         {
@@ -92,7 +138,7 @@ void setTxPower(lora_t *lora, int level, int outputPin)
             }
             // Default value PA_HF/LF or +17dBm
             SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_DAC, 0x84);
-            setOCP(lora, 100);
+            lora_setOCP(lora, 100);
         }
 
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PA_CONFIG, PA_BOOST | (level - 2));
@@ -132,7 +178,7 @@ void lora_setFrequency(lora_t *lora, long frequency)
  * @param sx1276
  * @param mA
  */
-void setOCP(lora_t *lora, uint8_t mA)
+void lora_setOCP(lora_t *lora, uint8_t mA)
 {
     printf("setOCP \n");
 
@@ -264,10 +310,10 @@ int lora_endPacket(lora_t *lora, bool async)
  * @param size
  * @return size_t
  */
-size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
+size_t lora_sendMessage(lora_t *lora, const uint8_t *msg, size_t size)
 {
     printf("lora_sendMessage\n");
-    lora_beginPacket(lora, 0); // Explicit Header Mode
+    lora_beginPacket(lora, lora->_implicitHeaderMode); // Explicit Header Mode
 
     // seralize data bevor sending it
 
@@ -275,6 +321,12 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 
     printf("Currents fifo size: %d \n", currentLength);
     printf("Currents  size: %d \n", size);
+    for (size_t i = 0; i < size; i++)
+    {
+        printf("%d",msg[i]);
+    }
+    printf("\n");
+
 
     // check if the new msg fits into the fifo register
     if ((currentLength + size) < MAX_PAYLOAD_LENGTH)
@@ -286,9 +338,8 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
         SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_PAYLOAD_LENGTH, currentLength + size);
 
         lora_endPacket(lora, false);
-        // lora_tx_single(lora);
     }
-    else // Split msg how ? kp !
+    else // Split msg
     {
         // size = MAX_PKT_LENGTH - currentLength;
         // The Message needs to be send in single packages
@@ -299,7 +350,7 @@ size_t lora_sendMessage(lora_t *lora, const char *msg, size_t size)
 
 int lora_packetRssi(lora_t *lora)
 {
-    // TODO: Fix calculation
+    //RSSI Value depends on which output Port was used
     return (SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_PKT_RSSI_VALUE) - (lora->_frequency < RF_MID_BAND_THRESHOLD ? RSSI_OFFSET_LF_PORT : RSSI_OFFSET_HF_PORT));
 }
 
@@ -356,16 +407,34 @@ void lora_rx_continuous(lora_t *lora)
     {
         if (!(SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS) & IRQ_RX_DONE_MASK) == 0)
         {
-            gpio_put(PICO_DEFAULT_LED_PIN, 1);
-            printf("Recived a message\n");
-            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_RX_DONE_MASK);
-            // Call ISR
+            SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS, IRQ_RX_DONE_MASK); // Reset IRQ
+            // Do Stuff
             lora_printRecivedMessage(lora);
-            // break;
         }
     }
 }
 
+void lora_getFiFoData(lora_t *lora, uint8_t *data, uint8_t *length)
+{
+    // Extract Payload from FIFO
+    uint8_t currentPos = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_FIFO_RX_CURRENT_ADDR);
+    *length = SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_RX_NB_BYT);
+    uint8_t retData[*length];
+
+    /*
+     * Muss für den Impliziten typ noch angepasst werden
+     */
+
+    SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, currentPos); // Set FiFo ptr to corrert position
+    SX1276_READ(lora->sx1276, REG_FIFO, *length, data);                    // Get FiFo data
+
+}
+
+/**
+ * @brief
+ *
+ * @param lora
+ */
 void lora_printRecivedMessage(lora_t *lora)
 {
 
@@ -376,7 +445,7 @@ void lora_printRecivedMessage(lora_t *lora)
 
     SX1276_WRITE_SINGLE_BYTE(lora->sx1276, REG_FIFO_ADDR_PTR, currentPos); // Set FiFo ptr to corrert position
     SX1276_READ(lora->sx1276, REG_FIFO, length, data);                     // Get FiFo data
-
+    // printf("length: %d\n",length);
     // Print the FiFo data
     for (size_t i = 0; i < length; i++)
     {
@@ -385,32 +454,14 @@ void lora_printRecivedMessage(lora_t *lora)
 
     for (size_t i = 0; i < length; i++)
     {
-        printf("%c", data[i]);
+        printf("%d", data[i]);
+        //If chars change to %c
     }
     printf("\n");
 
     printf("RSSI : %d\n", lora_packetRssi(lora)); // Print paket infos
 }
 
-// long lora_packetFrequencyError(lora_t *lora)
-// {
-//     int32_t freqError = 0;
-//     freqError = static_cast<int32_t>(SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_MSB) & B111);
-//     freqError <<= 8L;
-//     freqError += static_cast<int32_t>(SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_MID));
-//     freqError <<= 8L;
-//     freqError += static_cast<int32_t>(SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_LSB));
-
-//     if (SX1276_READ_SINGLE_BYTE(lora->sx1276,REG_FREQ_ERROR_MSB) & B1000)
-//     {                        // Sign bit is on
-//         freqError -= 524288; // B1000'0000'0000'0000'0000
-//     }
-
-//     const float fXtal = 32E6;                                                                                         // FXOSC: crystal oscillator (XTAL) frequency (2.5. Chip Specification, p. 14)
-//     const float fError = ((static_cast<float>(freqError) * (1L << 24)) / fXtal) * (getSignalBandwidth() / 500000.0f); // p. 37
-
-//     return static_cast<long>(fError);
-// }
 /**
  * @brief This Function will print all relevant Register
  *
@@ -420,7 +471,7 @@ void lora_Debug(lora_t *lora)
 {
     printf("----------------------------------------------------------------\n");
     printf("OpMode: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_OP_MODE));
-    printf("Freq: %d\n", lora_getFrequency(lora));
+    // printf("Freq: %d\n", lora_getFrequency(lora));
 
     printf("IRQ FLags Mask: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS_MASK));
     printf("IRQ FLags: %x\n", SX1276_READ_SINGLE_BYTE(lora->sx1276, REG_IRQ_FLAGS));
